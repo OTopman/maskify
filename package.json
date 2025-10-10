@@ -1,23 +1,39 @@
 {
   "name": "maskify",
   "version": "1.0.0",
-  "description": "A utility to mask sensitive data in strings, objects, and arrays.",
+  "description": "Advanced data masking utility for Node.js — safely mask emails, phones, cards, and nested object fields with wildcard support.",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "build": "tsc",
+    "test:coverage": "jest --coverage",
+    "prepare": "npm run build"
   },
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/OTopman/maskify.git"
   },
   "keywords": [
+    "mask",
     "masking",
-    "sensitive-data",
     "privacy",
-    "masker",
+    "data-protection",
+    "sanitize",
+    "obfuscate",
+    "security",
+    "email-mask",
+    "card-mask",
+    "phone-mask",
+    "pii",
+    "gdpr",
+    "nodejs",
+    "typescript",
+    "javascript",
+    "utility",
     "maskify"
   ],
-  "author": "Temitope Okunlola",
+  "author": "Temitope Okunlola<okunlolatopman14@gmail.com>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/OTopman/maskify/issues"
