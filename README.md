@@ -29,11 +29,11 @@ yarn add maskify
 
 
 ```ts
-import { Masker } from 'maskify';
+import { Maskify } from 'maskify';
 
 
 // Mask individual values
-const maskedEmail = Masker.mask('john.doe@example.com', { type: 'email' });
+const maskedEmail = Maskify.mask('john.doe@example.com', { type: 'email' });
 console.log(maskedEmail); // jo****@e****.com
 
 
@@ -44,7 +44,7 @@ phone: '+2348012345678'
 };
 
 
-const maskedUser = Masker.maskSensitiveFields(user, {
+const maskedUser = Maskify.maskSensitiveFields(user, {
 email: { type: 'email' },
 phone: { type: 'phone' }
 });
@@ -61,7 +61,7 @@ const users = [
   }
 ];
 
-const masked = Masker.maskSensitiveFields(users, {
+const masked = Maskify.maskSensitiveFields(users, {
   email: { type: 'email' },
   'profile.email': { type: 'email' },
   'contacts.*.phone': { type: 'phone' },
