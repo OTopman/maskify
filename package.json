@@ -1,0 +1,34 @@
+{
+  "name": "maskify",
+  "version": "1.0.0",
+  "description": "A utility to mask sensitive data in strings, objects, and arrays.",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/OTopman/maskify.git"
+  },
+  "keywords": [
+    "masking",
+    "sensitive-data",
+    "privacy",
+    "masker",
+    "maskify"
+  ],
+  "author": "Temitope Okunlola",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/OTopman/maskify/issues"
+  },
+  "homepage": "https://github.com/OTopman/maskify#readme",
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.7.1",
+    "eslint": "^9.37.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.5",
+    "typescript": "^5.9.3"
+  }
+}
