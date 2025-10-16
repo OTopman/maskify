@@ -1,4 +1,4 @@
-import { Maskify } from '../src/maskify';
+import { Maskify } from '../src/index';
 
 describe('Maskify Utility', () => {
   describe('Maskify.mask()', () => {

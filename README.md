@@ -11,6 +11,9 @@ It’s ideal for logging, analytics, and compliance scenarios (e.g., GDPR/PII re
 - ✅ Schema-based configuration per field
 - ✅ Non-destructive (returns deep clones)
 - ✅ TypeScript-friendly with inferred generics
+- ✅ Auto-detect sensitive types: email, phone, card, etc.
+- ✅ Pattern-based masking (`#### **** ####`)  
+- ✅ Built-in Express middleware for automatic response masking
 - ✅ Extendable mask patterns and custom strategies
 
 
@@ -22,6 +25,12 @@ npm install maskify
 # or 
 
 yarn add maskify
+```
+
+Note: Express is peer dependencies if you want to use the middleware.
+
+```bash 
+npm install express
 ```
 
 
@@ -36,6 +45,13 @@ import { Maskify } from 'maskify';
 const maskedEmail = Maskify.mask('john.doe@example.com', { type: 'email' });
 console.log(maskedEmail); // jo****@e****.com
 
+// Mask with explicit type
+const maskedPhone = Maskify.mask('+2348012345678', { type: 'phone' });
+console.log(maskedPhone);
+
+// Mask with pattern
+const maskedCard = Maskify.pattern('1234567890123456', '#### **** **** ####');
+console.log(maskedCard); 
 
 // Mask objects
 const user = {
@@ -72,6 +88,61 @@ console.log(masked);
 
 ```
 
+## Middleware Support
+
+### Express
+```ts 
+import express from 'express';
+import { Maskify } from './maskify';
+
+const app = express();
+app.use(express.json());
+
+// Attach Maskify middleware
+bootstrap();
+
+async function bootstrap() {
+  await Maskify.use(
+    app,
+    {
+      fields: ['*.email', '*.phone', '[*].cards.*.number'], // paths to mask
+      maskOptions: { maxAsterisks: 4, autoDetect: true }, // optional global mask options
+    },
+    'express'
+  );
+
+    // or
+    const middleware = await Maskify.middlewares.express({
+      fields: ['email', 'phone'],
+    });
+
+    app.use(middleware);
+
+  // Sample route
+  app.get('/users', (req, res) => {
+    const users = [
+      {
+        name: 'John Doe',
+        email: 'john.doe@example.com',
+        phone: '+2348012345678',
+        cards: [{ number: '1234123412341234' }],
+      },
+      {
+        name: 'Jane Doe',
+        email: 'jane.doe@example.com',
+        phone: '+2348098765432',
+        cards: [{ number: '4321432143214321' }],
+      },
+    ];
+
+    res.json(users);
+  });
+
+  app.listen(3000, () => {
+    console.log('Express server running on http://localhost:3000');
+  });
+}
+```
 
 ## Mask Options
 
@@ -79,15 +150,16 @@ console.log(masked);
 interface MaskOptions {
   visibleStart?: number; // Number of visible characters at the start
   visibleEnd?: number;   // Number of visible characters at the end
-  maxAsterisks?: number; // Maximum number of '*' in masked string
+  maxAsterisks?: number; // Maximum number of 'maskChar' or '*' in masked string
   autoDetect?: boolean;  // Automatically detect type (default: true)
   type?: 'email' | 'phone' | 'card' | 'generic'; // Force a specific type
+  maskChar?: string;     // Character used for masking (default: '*')
+  pattern?: string;      // Custom pattern like '#### **** ####' or #{4} *{4} #{4}
 }
-
 ```
 
 ## Maskable Types
-- email, phone, card, password, pin, token, bvn, nin, dob, ssn, and more.
+- email, phone, card, and more.
 - You can also specify your custom property
 
 

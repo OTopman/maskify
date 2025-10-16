@@ -1,0 +1,9 @@
+src/
+tests/
+tsconfig.json
+*.ts
+*.map
+node_modules/
+coverage/
+.git/
+.vscode/

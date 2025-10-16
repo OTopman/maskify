@@ -6,8 +6,9 @@
     "outDir": "dist",
     "strict": true,
     "esModuleInterop": true,
+    "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
   },
-  "include": ["src/**/*", "tests/masker.test.ts"]
+  "include": ["src/**/*", "tests/*"]
 }

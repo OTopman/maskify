@@ -1,7 +1,15 @@
-import { maskCard, maskEmail, maskGeneric, maskPhone } from './maskers';
-import { Detectors, MaskableType, MaskOptions, safeClone } from './utils';
+import {
+  maskAddress,
+  maskCard,
+  maskEmail,
+  maskGeneric,
+  maskName,
+  maskPattern,
+  maskPhone,
+} from '../maskers';
+import { Detectors, MaskableType, MaskOptions, safeClone } from '../utils';
 
-export class Maskify {
+export class MaskifyCore {
   static mask(
     value: string,
     opts: MaskOptions = { maskChar: '*', maxAsterisks: 4, autoDetect: true }
@@ -10,15 +18,34 @@ export class Maskify {
     const trimmed = value.trim();
     const { autoDetect = true, type } = opts;
 
-    if (type) return this.maskByType(trimmed, type, opts);
+    // If pattern exists, it takes the highest precedence
+    if (opts.pattern) return maskPattern(trimmed, opts.pattern, opts);
 
+    if (type) return MaskifyCore.maskByType(trimmed, type, opts);
+
+    // If autoDetect → infer type using detectors
     if (autoDetect) {
-      if (Detectors.isEmail(trimmed)) return maskEmail(trimmed, opts);
-      if (Detectors.isPhone(trimmed)) return maskPhone(trimmed, opts);
-      if (Detectors.isCard(trimmed)) return maskCard(trimmed, opts);
+      const inferredType = Detectors.detectType(trimmed);
+      return MaskifyCore.maskByType(trimmed, inferredType, opts);
     }
 
     return maskGeneric(trimmed, opts);
+  }
+
+  /**
+   * Pattern-based masking helper.
+   * Supports:
+   *  - '#' reveal char
+   *  - '*' mask char (opts.maskChar)
+   *  - '{n}' repeat expansion for previous symbol
+   * Fault-tolerant: will append masked tail if value longer than pattern.
+   */
+  static pattern(
+    value: unknown,
+    pattern: string,
+    option: Pick<MaskOptions, 'maskChar'> = {}
+  ) {
+    return maskPattern(value, pattern, option);
   }
 
   private static maskByType(
@@ -33,11 +60,25 @@ export class Maskify {
         return maskPhone(value, opts);
       case 'card':
         return maskCard(value, opts);
+      case 'address':
+        return maskAddress(value, opts);
+      case 'name':
+        return maskName(value, opts);
+      case 'generic':
       default:
         return maskGeneric(value, opts);
     }
   }
 
+  /**
+   * Mask fields in nested object/array based on schema.
+   * schema: Record<path, MaskOptions>
+   *
+   * Supports:
+   * - dot paths: 'user.email'
+   * - array wildcard: 'users[*].email'
+   * - numeric indices: 'cards[0].number'
+   */
   static maskSensitiveFields<T extends object>(
     data: T | T[],
     schema: Record<string, MaskOptions>
@@ -83,7 +124,7 @@ export class Maskify {
 
         if (isLast) {
           if (typeof current[key] === 'string') {
-            current[key] = this.mask(current[key], opts);
+            current[key] = MaskifyCore.mask(current[key], opts);
           }
         } else {
           recurse(current[key], i + 1);
