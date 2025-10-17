@@ -13,7 +13,7 @@ It’s ideal for logging, analytics, and compliance scenarios (e.g., GDPR/PII re
 - ✅ TypeScript-friendly with inferred generics
 - ✅ Auto-detect sensitive types: email, phone, card, etc.
 - ✅ Pattern-based masking (`#### **** ####`)  
-- ✅ Built-in Express middleware for automatic response masking
+- ✅ Express middleware support (Maskify.use or Maskify.middlewares.express)
 - ✅ Extendable mask patterns and custom strategies
 
 
@@ -105,7 +105,7 @@ async function bootstrap() {
   await Maskify.use(
     app,
     {
-      fields: ['*.email', '*.phone', '[*].cards.*.number'], // paths to mask
+      fields: ['*.email', '*.phone', { name: '[*].cards.*.number', options: { type: 'card' }}], // paths to mask
       maskOptions: { maxAsterisks: 4, autoDetect: true }, // optional global mask options
     },
     'express'

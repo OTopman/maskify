@@ -15,13 +15,17 @@ describe('Maskify Express Middleware', () => {
     });
 
     app.use(middleware); */
-    
+
     // Option 2
     await Maskify.use(app, {
-      fields: ['email', 'phone'],
+      fields: [
+        { name: 'email', options: { type: 'email' } },
+        { name: 'phone', options: { type: 'phone' } },
+      ], // or ['email', 'phone', ],
+
       maskOptions: {
         autoDetect: true,
-        maxAsterisks: 4
+        maxAsterisks: 4,
       },
     });
 

@@ -1,4 +1,10 @@
-export type MaskableType = 'email' | 'phone' | 'card' | 'address' | 'name' | 'generic';
+export type MaskableType =
+  | 'email'
+  | 'phone'
+  | 'card'
+  | 'address'
+  | 'name'
+  | 'generic';
 
 export interface MaskOptions {
   /** Number of visible characters at the start */
@@ -23,10 +29,23 @@ export interface MaskOptions {
 
 export type MaskSchema = Record<string, MaskOptions>;
 
+export type MiddlewareField =
+  | string
+  | {
+      name: string;
+      options?: MaskOptions;
+    };
 
 export interface MiddlewareOptions {
-  /** Fields in the response to mask */
-  fields: string[];
-  /** Optional mask configuration */
+  /**
+   * List of fields to mask.
+   * Each field can be a string (uses global maskOptions)
+   * or an object with custom per-field options.
+   */
+  fields: (string | { name: string; options?: MaskOptions })[];
+
+  /**
+   * Global mask options applied if field-specific options are not provided.
+   */
   maskOptions?: MaskOptions;
 }
