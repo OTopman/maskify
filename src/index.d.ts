@@ -36,9 +36,9 @@ export declare class Maskify {
    * Dynamically attach the Maskify middleware to an Express app.
    *
    * @example
-   * await Maskify.use(app, { fields: ['email', 'phone'] });
+   * Maskify.use(app, { fields: ['email', 'phone'] });
    */
-  static use(app: Application, options: MiddlewareOptions): Promise<void>;
+  static use(app: Application, options: MiddlewareOptions): void;
 
   /**
    * Built-in middleware for Express.

@@ -6,18 +6,53 @@
 
 All notable changes to this project will be documented in this file.
 
-## [3.2.0] - 2025-10-16
+## v3.2.1 - 2025-10-16
+- 🚀 Enhancements
+ - Improved Middleware Architecture
+ - Refactored Express middleware to use a lazy require loader instead of top-level await.
+ - Removed dependency on dynamic import('express'), improving compatibility with both CJS and ESM users.
+ - Middleware can now be initialized synchronously, allowing:
+        
+    ```ts
+    import { Maskify } from 'maskify-ts';
+    app.use(Maskify.middlewares.express({ fields: ['email', 'phone'] }));
+
+    // or
+    Maskify.use(app, {
+        fields: ['email', 'phone'],
+        maskOptions: { autoDetect: true }
+    });
+    ```
+ - Field Configuration Update
+    - Added support for per-field mask options in Express middleware: 
+    ```ts
+        fields: [
+        { name: 'email', options: { type: 'email' } },
+        { name: 'card', options: { type: 'card', maxAsterisks: 6 } },
+        'phone'
+        ];
+    ```
+   - The middleware now merges field-specific and global maskOptions safely.
+
+## 🧩 Compatibility
+ - Fully backward compatible with previous:
+    ```ts
+        Maskify.use(app, { fields: ['email', 'phone'] });
+    ```
+ - No breaking changes in public API.
+
+## v3.2.0 - 2025-10-16
 ### Added
 - ⚙️ **Express Middleware Support**
   - Added built-in middleware for Express:
     ```ts
     app.use(
-      await Maskify.middlewares.express({
-        fields: [
-          'email',
-          { name: 'phone', options: { visibleEnd: 2 } }
-        ],
-        maskOptions: { autoDetect: true, maxAsterisks: 4 }
+        Maskify.middlewares.express({
+            fields: [
+            'email',
+            { name: 'phone', options: { visibleEnd: 2 } }
+            ],
+            maskOptions: { autoDetect: true, maxAsterisks: 4 }
       })
     );
     ```

@@ -102,7 +102,7 @@ app.use(express.json());
 bootstrap();
 
 async function bootstrap() {
-  await Maskify.use(
+   Maskify.use(
     app,
     {
       fields: ['*.email', '*.phone', { name: '[*].cards.*.number', options: { type: 'card' }}], // paths to mask
@@ -112,7 +112,7 @@ async function bootstrap() {
   );
 
     // or
-    const middleware = await Maskify.middlewares.express({
+    const middleware =  Maskify.middlewares.express({
       fields: ['email', 'phone'],
     });
 

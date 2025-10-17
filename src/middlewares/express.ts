@@ -2,11 +2,22 @@ import type { NextFunction, Request, Response } from 'express';
 import { MaskifyCore } from '../core/maskify';
 import { MiddlewareOptions } from '../utils';
 
-export async function express(options: MiddlewareOptions) {
+let expressLoaded = false;
+function ensureExpressInstalled() {
+  if (expressLoaded) return;
+  try {
+    require.resolve('express');
+    expressLoaded = true;
+  } catch {
+    throw new Error(
+      'Express is required but not installed. Please run `npm install express`.'
+    );
+  }
+}
+
+export function express(options: MiddlewareOptions) {
   // Ensure Express is available
-  await import('express').catch(() => {
-    throw new Error('Express is required but not installed');
-  });
+  ensureExpressInstalled();
 
   const { fields, maskOptions: globalOptions } = options;
 

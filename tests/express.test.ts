@@ -5,7 +5,7 @@ import { Maskify } from '../src/index';
 describe('Maskify Express Middleware', () => {
   let app: express.Express;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     app = express();
     app.use(express.json());
 
@@ -17,7 +17,7 @@ describe('Maskify Express Middleware', () => {
     app.use(middleware); */
 
     // Option 2
-    await Maskify.use(app, {
+    Maskify.use(app, {
       fields: [
         { name: 'email', options: { type: 'email' } },
         { name: 'phone', options: { type: 'phone' } },

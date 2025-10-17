@@ -21,13 +21,13 @@ export namespace Maskify {
    * @param options MiddlewareOptions (fields, patterns, etc.)
    * @param type 'express' (default: 'express')
    */
-  export const use = async (
+  export const use = (
     app: express.Express,
     options: MiddlewareOptions,
     type: 'express' = 'express'
   ) => {
     if (type === 'express') {
-      const mw = await middlewares.express(options);
+      const mw = middlewares.express(options);
       app.use(mw);
     } else {
       throw new Error(`Unimplemented server type: ${type}`);
