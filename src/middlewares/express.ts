@@ -21,31 +21,28 @@ export function express(options: MiddlewareOptions) {
 
   const { fields, maskOptions: globalOptions } = options;
 
+  // Build schema dynamically from `fields`
+  const schema = Object.fromEntries(
+    fields.map((f) => {
+      if (typeof f === 'string') {
+        return [f, globalOptions || {}];
+      }
+
+      return [
+        f.name,
+        {
+          ...(globalOptions || {}),
+          ...(f.options || {}),
+        },
+      ];
+    })
+  );
+
   return (_: Request, res: Response, next: NextFunction) => {
-    // Preserve original `res.json`
     const originalJson = res.json.bind(res);
 
     res.json = (data: any) => {
       if (!data || typeof data !== 'object') return originalJson(data);
-
-      // Build schema dynamically from `fields`
-      const schema = Object.fromEntries(
-        fields.map((f) => {
-          if (typeof f === 'string') {
-            // string → use global maskOptions
-            return [f, globalOptions || {}];
-          }
-
-          // object → merge field maskOptions with global defaults
-          return [
-            f.name,
-            {
-              ...(globalOptions || {}),
-              ...(f.options || {}),
-            },
-          ];
-        })
-      );
 
       const masked = MaskifyCore.maskSensitiveFields(data, schema);
 

@@ -4,7 +4,10 @@ export type MaskableType =
   | 'card'
   | 'address'
   | 'name'
-  | 'generic';
+  | 'generic'
+  | 'ip'
+  | 'jwt'
+  | 'url';
 
 export interface MaskOptions {
   /** Number of visible characters at the start */
@@ -25,9 +28,22 @@ export interface MaskOptions {
   /** Character used for masking (default: '*') */
   maskChar?: string;
   pattern?: string;
+
+  /** Custom transformation function (overrides other options) */
+  transform?: (value: string) => string;
 }
 
 export type MaskSchema = Record<string, MaskOptions>;
+
+export interface MaskSchemaOptions {
+  /** * 'mask' (default): Only masks fields defined in the schema.
+   * 'allow': Masks EVERYTHING, leaving only schema fields visible.
+   */
+  mode?: 'mask' | 'allow';
+
+  /** Options to use for fields that are masked by default in 'allow' mode */
+  defaultMask?: MaskOptions;
+}
 
 export type MiddlewareField =
   | string

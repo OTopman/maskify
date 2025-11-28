@@ -1,194 +1,256 @@
-# Maskify
+Here is the updated `README.md`. It documents the new **Smart Compiler**, **Auto-Discovery**, **Fastify Support**, **Streaming**, and all other features added in v3.3.0.
 
-Maskify is a lightweight, zero-dependency TypeScript utility for safely masking sensitive data in strings, objects, arrays, and deeply nested structures — with full dot-path and wildcard (*) support. 
+````markdown:readme.md
+# Maskify-TS
 
-It’s ideal for logging, analytics, and compliance scenarios (e.g., GDPR/PII redaction) where sensitive data must be obscured.
+**Advanced data masking utility for Node.js & TypeScript** — intelligently mask emails, phones, credit cards, IPs, JWTs, and deeply nested object fields using a smart compiler.
 
+[![npm version](https://img.shields.io/npm/v/maskify-ts.svg)](https://www.npmjs.com/package/maskify-ts)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://github.com/OTopman/maskify/actions/workflows/test.yml/badge.svg)](https://github.com/OTopman/maskify/actions)
+
+It’s ideal for logging, analytics, and compliance scenarios (e.g., GDPR/PII redaction, HIPAA) where sensitive data must be obscured before storage or transmission.
 
 ## ⚡️ Features
-- ✅ Mask strings, objects, arrays, and nested fields
-- ✅ Dot-path and wildcard (*) traversal support
-- ✅ Schema-based configuration per field
-- ✅ Non-destructive (returns deep clones)
-- ✅ TypeScript-friendly with inferred generics
-- ✅ Auto-detect sensitive types: email, phone, card, etc.
-- ✅ Pattern-based masking (`#### **** ####`)  
-- ✅ Express middleware support (Maskify.use or Maskify.middlewares.express)
-- ✅ Extendable mask patterns and custom strategies
 
+- ✅ **Smart Compiler:** High-performance, single-pass lexer that identifies and masks PII patterns (Email, IP, JWT, etc.) within unstructured text logs.
+- ✅ **Zero-Config Auto-Masking:** Heuristic analysis to automatically detect and mask sensitive data in objects without manual schema definition.
+- ✅ **Deep Masking:** Mask strings, objects, arrays, and nested fields with zero mutation (non-destructive).
+- ✅ **Class Decorators:** Declarative masking using `@Mask` on DTOs and Entities.
+- ✅ **Stream Support:** High-performance masking for large files and logs (Transform Streams).
+- ✅ **Advanced Modes:** Support for **Allowlist** (Mask everything *except* X) and **Blocklist**.
+- ✅ **Deterministic Masking:** Generate consistent hashes for analytics (count unique users without storing PII).
+- ✅ **Framework Ready:** Built-in middleware for **Express** and **Fastify**.
+- ✅ **Specialized Maskers:** Auto-detects Email, Phone, Credit Card, IPv4/IPv6, JWT, URLs, Address, and Names.
+- ✅ **CLI Tool:** Pipe logs directly from the command line.
 
-## Installation
+---
+
+## 📦 Installation
 
 ```bash
-npm install maskify
+npm install maskify-ts
+````
 
-# or 
+> **Note:** If you intend to use **Class Decorators**, you must install `reflect-metadata`:
+>
+> ```bash
+> npm install reflect-metadata
+> ```
 
-yarn add maskify
-```
-
-Note: Express is peer dependencies if you want to use the middleware.
-
-```bash 
-npm install express
-```
-
+-----
 
 ## 🚀 Quickstart
 
+### 1\. Intelligent Masking (Smart Compiler)
 
-```ts
-import { Maskify } from 'maskify';
+Perfect for unstructured text like log messages or paragraphs.
 
+```typescript
+import { Maskify } from 'maskify-ts';
 
-// Mask individual values
-const maskedEmail = Maskify.mask('john.doe@example.com', { type: 'email' });
-console.log(maskedEmail); // jo****@e****.com
+const log = "User admin@test.com failed login from IP 192.168.1.50 with token eyJhbGci...";
 
-// Mask with explicit type
-const maskedPhone = Maskify.mask('+2348012345678', { type: 'phone' });
-console.log(maskedPhone);
+const safeLog = Maskify.smart(log); 
+// Output: "User ad***@t***.com failed login from IP 192.168.1.*** with token eyJhbGci...********"
+```
 
-// Mask with pattern
-const maskedCard = Maskify.pattern('1234567890123456', '#### **** **** ####');
-console.log(maskedCard); 
+### 2\. Zero-Config Auto-Masking
 
-// Mask objects
-const user = {
-email: 'john.doe@example.com',
-phone: '+2348012345678'
+Let Maskify figure out what to mask based on keys (`password`, `secret`) and values (Email, JWT, etc.).
+
+```typescript
+const dirtyData = {
+  user: "John Doe",
+  contact: "admin@company.com", // 🧠 Detected as Email
+  meta: {
+    ip: "10.0.0.5",             // 🧠 Detected as IP
+    token: "eyJhbGciOi..."      // 🧠 Detected as JWT
+  },
+  secrets: {
+    password: "super-secret-pw" // 🧠 Detected by Key Name
+  }
 };
 
+const clean = Maskify.autoMask(dirtyData);
+```
 
-const maskedUser = Maskify.maskSensitiveFields(user, {
-email: { type: 'email' },
-phone: { type: 'phone' }
-});
-console.log(maskedUser);
+### 3\. Class Decorators (TypeScript)
 
+Ideal for NestJS, TypeORM, or standardized DTOs.
 
-// Mask array of object
-const users = [
-  {
-    email: 'user1@example.com',
-    profile: { email: 'profile@example.com' },
-    contacts: [{ phone: '+2348012345678' }, { phone: '+2348098765432' }],
-    cards: [{ number: '1234123412341234' }]
+```typescript
+import { Mask, Maskify } from 'maskify-ts';
+
+class UserDTO {
+  @Mask({ type: 'email' })
+  email: string;
+
+  @Mask({ type: 'phone', maskChar: '#' })
+  phone: string;
+
+  // No decorator = No masking
+  username: string;
+
+  constructor(email: string, phone: string, username: string) {
+    this.email = email;
+    this.phone = phone;
+    this.username = username;
   }
-];
+}
 
-const masked = Maskify.maskSensitiveFields(users, {
-  email: { type: 'email' },
-  'profile.email': { type: 'email' },
-  'contacts.*.phone': { type: 'phone' },
-  'cards[0].number': { type: 'card' }
-});
+const user = new UserDTO('john@doe.com', '+1234567890', 'johndoe');
+const masked = Maskify.maskClass(user);
 
 console.log(masked);
-
+// UserDTO { email: 'jo**@d**.com', phone: '+123#######90', username: 'johndoe' }
 ```
 
-## Middleware Support
+### 4\. Deterministic Masking (Analytics)
+
+Generate consistent hashes to track usage without storing PII.
+
+```typescript
+const email = 'user@gmail.com';
+const opts = { secret: 'my-app-super-secret' };
+
+const hash1 = Maskify.deterministic(email, opts);
+const hash2 = Maskify.deterministic(email, opts);
+
+console.log(hash1 === hash2); // true (e.g., "a3f12b9...")
+```
+
+-----
+
+## 🌊 Streaming (High Performance)
+
+For processing large log files (GBs) without memory issues, use `MaskifyStream`.
+
+```typescript
+import { createReadStream, createWriteStream } from 'fs';
+import { MaskifyStream } from 'maskify-ts/stream';
+
+const read = createReadStream('production.log');
+const write = createWriteStream('clean.log');
+
+const maskStream = new MaskifyStream({
+  'user.email': { type: 'email' },
+  'context.ip': { type: 'ip' }
+});
+
+read.pipe(maskStream).pipe(write);
+```
+
+-----
+
+## 🌐 Middleware Support
+
+### Fastify
+
+```typescript
+import Fastify from 'fastify';
+import { Maskify } from 'maskify-ts';
+
+const app = Fastify();
+
+// Automatically masks all outgoing responses
+app.register(Maskify.middlewares.fastify, {
+  maskOptions: { autoDetect: true }, // Enable smart detection
+  fields: ['email', 'password', 'token']
+});
+
+app.get('/', async () => ({ email: 'test@test.com', password: '123' }));
+// Response: { "email": "te**@t**.com", "password": "***" }
+```
 
 ### Express
-```ts 
+
+```typescript
 import express from 'express';
-import { Maskify } from './maskify';
+import { Maskify } from 'maskify-ts';
 
 const app = express();
-app.use(express.json());
 
-// Attach Maskify middleware
-bootstrap();
-
-async function bootstrap() {
-   Maskify.use(
-    app,
-    {
-      fields: ['*.email', '*.phone', { name: '[*].cards.*.number', options: { type: 'card' }}], // paths to mask
-      maskOptions: { maxAsterisks: 4, autoDetect: true }, // optional global mask options
-    },
-    'express'
-  );
-
-    // or
-    const middleware =  Maskify.middlewares.express({
-      fields: ['email', 'phone'],
-    });
-
-    app.use(middleware);
-
-  // Sample route
-  app.get('/users', (req, res) => {
-    const users = [
-      {
-        name: 'John Doe',
-        email: 'john.doe@example.com',
-        phone: '+2348012345678',
-        cards: [{ number: '1234123412341234' }],
-      },
-      {
-        name: 'Jane Doe',
-        email: 'jane.doe@example.com',
-        phone: '+2348098765432',
-        cards: [{ number: '4321432143214321' }],
-      },
-    ];
-
-    res.json(users);
-  });
-
-  app.listen(3000, () => {
-    console.log('Express server running on http://localhost:3000');
-  });
-}
+// Register middleware
+app.use(Maskify.middlewares.express({
+  fields: [
+    'email',
+    { name: 'phone', options: { visibleEnd: 2 } }
+  ]
+}));
 ```
 
-## Mask Options
+-----
 
-```ts
+## 💻 CLI Tool
+
+Process logs directly from your terminal using the smart engine.
+
+```bash
+# Auto-detect PII in logs
+cat app.log | npx maskify-ts --auto
+
+# Strict Allowlist (Only keep timestamps)
+cat app.log | npx maskify-ts --allow -f "timestamp"
+
+# Load config from file
+cat app.log | npx maskify-ts
+```
+
+**Configuration File (`maskify.config.js`):**
+
+```javascript
+module.exports = {
+  mode: 'mask',
+  fields: ['email', 'password'],
+  maskOptions: { maskChar: '*' }
+};
+```
+
+-----
+
+## ⚙️ Configuration
+
+### Maskable Types
+
+The `type` option supports the following values:
+
+  - `email`: Masks email addresses (e.g., `j***@d***.com`).
+  - `phone`: Masks phone numbers, preserving international codes.
+  - `card`: Masks credit card numbers, preserving last 4 digits.
+  - `ip`: Masks IPv4 and IPv6 addresses.
+  - `jwt`: Masks JWT payloads and signatures, preserving the header.
+  - `url`: Masks sensitive query parameters in URLs.
+  - `address`: Masks street numbers and secondary address lines.
+  - `name`: Masks names (e.g., `J*** D***`).
+  - `generic`: Standard masking (e.g., `s******`).
+
+### MaskOptions Interface
+
+```typescript
 interface MaskOptions {
-  visibleStart?: number; // Number of visible characters at the start
-  visibleEnd?: number;   // Number of visible characters at the end
-  maxAsterisks?: number; // Maximum number of 'maskChar' or '*' in masked string
-  autoDetect?: boolean;  // Automatically detect type (default: true)
-  type?: 'email' | 'phone' | 'card' | 'generic'; // Force a specific type
-  maskChar?: string;     // Character used for masking (default: '*')
-  pattern?: string;      // Custom pattern like '#### **** ####' or #{4} *{4} #{4}
+  type?: 'email' | 'phone' | 'card' | 'address' | 'name' | 'ip' | 'jwt' | 'url' | 'generic';
+  visibleStart?: number; // Chars visible at start
+  visibleEnd?: number;   // Chars visible at end
+  maxAsterisks?: number; // Max length of mask string
+  maskChar?: string;     // Default: '*'
+  autoDetect?: boolean;  // Default: true
+  pattern?: string;      // e.g. "###-**-###"
+  transform?: (val: string) => string; // Custom function
 }
 ```
 
-## Maskable Types
-- email, phone, card, and more.
-- You can also specify your custom property
-
-
+-----
 
 ## Contributing
-Contributions are welcome! Please fork the repository and submit a pull request.
 
+Contributions are welcome\! Please fork the repository and submit a pull request.
 
 ## License
+
 MIT License
 
 Copyright (c) 2025 Temitope Okunlola
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+```
+```

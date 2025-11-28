@@ -1,13 +1,25 @@
 import {
   maskAddress,
   maskCard,
+  maskDeterministic,
   maskEmail,
   maskGeneric,
+  maskIp,
+  maskJwt,
   maskName,
   maskPattern,
   maskPhone,
+  maskUrl,
 } from '../maskers';
-import { Detectors, MaskableType, MaskOptions, safeClone } from '../utils';
+import {
+  Detectors,
+  MaskableType,
+  MaskOptions,
+  MaskSchemaOptions,
+  safeClone,
+} from '../utils';
+import { applyAllowStrategy } from './strategies/allow-strategy';
+import { applyMaskStrategy } from './strategies/mask-strategy';
 
 export class MaskifyCore {
   static mask(
@@ -16,6 +28,10 @@ export class MaskifyCore {
   ): string {
     if (!value) return value;
     const trimmed = value.trim();
+    if (opts.transform) {
+      return opts.transform(trimmed);
+    }
+
     const { autoDetect = true, type } = opts;
 
     // If pattern exists, it takes the highest precedence
@@ -64,8 +80,15 @@ export class MaskifyCore {
         return maskAddress(value, opts);
       case 'name':
         return maskName(value, opts);
+      case 'ip':
+        return maskIp(value);
+      case 'jwt':
+        return maskJwt(value, opts);
+      case 'url':
+        return maskUrl(value, opts);
       case 'generic':
       default:
+        if ((opts as any).secret) return maskDeterministic(value, opts as any);
         return maskGeneric(value, opts);
     }
   }
@@ -81,61 +104,19 @@ export class MaskifyCore {
    */
   static maskSensitiveFields<T extends object>(
     data: T | T[],
-    schema: Record<string, MaskOptions>
+    schema: Record<string, MaskOptions>,
+    options: MaskSchemaOptions = { mode: 'mask' }
   ): T | T[] {
     const clone = safeClone<T | T[]>(data);
 
-    // 🧠 Normalize paths like [*] → .*, [0] → .0
-    const normalizePath = (path: string) =>
-      path
-        .replace(/\[(\*|\d+)\]/g, '.$1') // convert [*] or [0]
-        .replace(/\.{2,}/g, '.') // collapse double dots
-        .replace(/^\./, '') // remove leading dot
-        .replace(/\.$/, ''); // remove trailing dot
-
-    const applyMask = (target: any, path: string, opts: MaskOptions) => {
-      const normalizedPath = normalizePath(path);
-      const segments = normalizedPath.split('.').filter(Boolean);
-
-      const recurse = (current: any, i: number): void => {
-        if (current == null) return;
-        const key = segments[i];
-        const isLast = i === segments.length - 1;
-
-        // wildcard *
-        if (key === '*') {
-          if (Array.isArray(current)) {
-            for (const item of current) recurse(item, i + 1);
-          }
-          return;
-        }
-
-        // numeric index e.g. users[0]
-        if (!isNaN(Number(key))) {
-          const idx = Number(key);
-          if (Array.isArray(current) && current[idx] != null) {
-            recurse(current[idx], i + 1);
-          }
-          return;
-        }
-
-        // normal object key
-        if (!(key in current)) return;
-
-        if (isLast) {
-          if (typeof current[key] === 'string') {
-            current[key] = MaskifyCore.mask(current[key], opts);
-          }
-        } else {
-          recurse(current[key], i + 1);
-        }
-      };
-
-      recurse(target, 0);
-    };
-
-    for (const [path, opts] of Object.entries(schema)) {
-      applyMask(clone, path, opts);
+    if (options.mode === 'allow') {
+      applyAllowStrategy(
+        clone,
+        schema,
+        options.defaultMask || { type: 'generic' }
+      );
+    } else {
+      applyMaskStrategy(clone, schema);
     }
 
     return clone;

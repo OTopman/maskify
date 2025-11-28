@@ -7,3 +7,5 @@ package-lock.json
 
 coverage
 src/misc.ts
+
+.DS_Store

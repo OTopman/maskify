@@ -6,6 +6,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## v3.3.0 - 2025-11-28
+### 🚀 Enhancements
+- **Smart Compiler (Lexer/Tokenizer)**: Introduced a high-performance, single-pass compiler that smartly detects and masks sensitive patterns (Email, IP, JWT, Card, Phone, URL) within unstructured text logs without manual configuration.
+- **Zero-Config Auto-Masking**: Added `Maskify.autoMask()` which uses heuristic analysis to automatically detect and mask PII in objects by scanning keys and values.
+- **Fastify Support**: Added a built-in Fastify middleware plugin for seamless integration.
+- **Class Decorators**: Introduced the `@Mask()` decorator for declarative masking on class properties (DTOs, Entities).
+- **Deterministic Masking**: Added `Maskify.deterministic()` to generate consistent hashes for analytics purposes.
+- **Stream Support**: Implemented `MaskifyStream` for high-performance masking of large files and logs via Node.js Transform streams.
+- **New Maskers**:
+    - **IP Address**: Added support for masking IPv4 and IPv6 addresses.
+    - **JWT**: Added support for masking JWTs (preserving the header while masking payload and signature).
+    - **URL**: Added support for masking sensitive query parameters in URLs.
+    - **Address & Name**: Added basic detection and masking strategies for addresses and names.
+- **Allowlist Mode**: Introduced `mode: 'allow'` option to mask everything *except* specified fields.
+- **CLI Tool**: Added a command-line interface (`maskify-ts`) for piping logs and masking data directly from the terminal with support for config files (`maskify.config.js`).
+
+### 🛠 Refactors & Fixes
+- **Deep Cloning**: Switched to `structuredClone` (with fallback) and implemented `WeakMap` based circular reference handling to prevent stack overflow errors and ensure true deep cloning without mutation.
+- **Middleware Optimization**: Optimized Express middleware to pre-calculate schemas during initialization rather than on every request, significantly improving performance.
+- **Type Definitions**: Removed manual `.d.ts` file maintenance in favor of automated type generation from source, fixing missing export issues like `maskClass`.
+- **Prototype Preservation**: Fixed `maskClass` to properly preserve class prototypes (e.g., ensuring `UserDTO` remains an instance of `UserDTO` after masking).
+
+---
+
 ## v3.2.1 - 2025-10-16
 - 🚀 Enhancements
  - Improved Middleware Architecture

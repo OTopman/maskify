@@ -1,6 +1,6 @@
 {
   "name": "maskify-ts",
-  "version": "3.2.1",
+  "version": "3.3.0",
   "description": "Advanced data masking utility for Node.js — safely mask emails, phones, cards, and nested object fields with wildcard support.",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -15,7 +15,9 @@
     "prepare": "npm run build",
     "prebuild": "rimraf dist",
     "build": "tsc -p tsconfig.json",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "docs:build": "compodoc -p tsconfig.doc.json -d documentation",
+    "docs:serve": "compodoc -s -d documentation"
   },
   "repository": {
     "type": "git",
@@ -48,12 +50,18 @@
   "bugs": {
     "url": "https://github.com/OTopman/maskify/issues"
   },
+  "bin": {
+    "maskify": "./dist/src/cli/index.js"
+  },
   "homepage": "https://github.com/OTopman/maskify#readme",
   "peerDependencies": {
     "@types/express": "^5.0.3",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "fastify": "^5.6.2",
+    "fastify-plugin": "^5.1.0"
   },
   "devDependencies": {
+    "@compodoc/compodoc": "^1.1.26",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.7.1",
     "@types/supertest": "^6.0.3",
@@ -63,5 +71,8 @@
     "supertest": "^7.1.4",
     "ts-jest": "^29.4.5",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "reflect-metadata": "^0.2.2"
   }
 }

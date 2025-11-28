@@ -7,3 +7,5 @@ node_modules/
 coverage/
 .git/
 .vscode/
+
+.DS_Store
