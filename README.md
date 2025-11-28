@@ -1,6 +1,6 @@
 Here is the updated `README.md`. It documents the new **Smart Compiler**, **Auto-Discovery**, **Fastify Support**, **Streaming**, and all other features added in v3.3.0.
 
-````markdown:readme.md
+
 # Maskify-TS
 
 **Advanced data masking utility for Node.js & TypeScript** — intelligently mask emails, phones, credit cards, IPs, JWTs, and deeply nested object fields using a smart compiler.
