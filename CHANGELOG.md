@@ -1,10 +1,23 @@
 
 ---
 
-```md
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## v3.3.2 - 2025-12-05
+
+### 📚 Documentation
+- Rewrote `README.md` to include comprehensive guides for Smart Compiler, Zero-Config Auto-Masking, Middleware, and Advanced Strategies.
+
+### ⚡️ Performance & Refactors
+- **Caching Strategy**: Implemented `LimitedCache` (LRU-like) for Regex compilation and Path parsing to prevent memory leaks in high-throughput environments.
+- **Optimized Cloning**: Updated `safeClone` to prioritize `structuredClone` for native performance gains.
+- **Config Loader**: Consolidated configuration logic into `src/utils/config.ts` and removed redundant loaders.
+
+### 🧪 Tests
+- **Test Isolation**: Fixed flaky tests by isolating global configuration using `jest.spyOn`.
+- **Mocking**: Improved file system mocking for reliable config loader testing.
+---
 
 ## v3.3.0 - 2025-11-28
 ### 🚀 Enhancements

@@ -1,15 +1,19 @@
 import Fastify, { FastifyInstance } from 'fastify';
 import { Maskify } from '../src/index';
+import { GlobalConfigLoader } from '../src/utils/config';
 
 describe('Fastify Middleware', () => {
   let app: FastifyInstance;
 
   beforeEach(() => {
     app = Fastify();
+    // 🛡️ ISOLATION
+    jest.spyOn(GlobalConfigLoader, 'load').mockReturnValue({});
   });
 
   afterEach(async () => {
     await app.close();
+    jest.restoreAllMocks();
   });
 
   it('should mask sensitive fields in response', async () => {

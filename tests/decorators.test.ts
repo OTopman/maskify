@@ -1,7 +1,17 @@
 import 'reflect-metadata';
 import { Maskify, Mask } from '../src/index';
+import { GlobalConfigLoader } from '../src/utils/config';
 
 describe('Class Decorators', () => {
+  // 🛡️ ISOLATION
+  beforeAll(() => {
+    jest.spyOn(GlobalConfigLoader, 'load').mockReturnValue({});
+  });
+
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
+
   class UserDTO {
     @Mask({ type: 'email' })
     email: string;

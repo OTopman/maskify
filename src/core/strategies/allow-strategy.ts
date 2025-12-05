@@ -1,54 +1,66 @@
 import { MaskOptions } from '../../utils';
 import { normalizePath } from '../../utils/paths';
+import { getCachedRegex } from '../../utils/cache';
 import { MaskifyCore } from '../maskify';
 
-/**
- * Masks everything EXCEPT the paths defined in the schema (Allowlist).
- */
 export function applyAllowStrategy(
   target: any,
   schema: Record<string, MaskOptions>,
   defaultMask: MaskOptions
 ): void {
-  // Pre-compile regexes for allowed paths
-  const allowedRegexes = Object.keys(schema).map((path) => {
-    const norm = normalizePath(path);
-    // Escape dots and convert * to wildcard regex
-    const regexStr =
-      '^' + norm.replace(/\./g, '\\.').replace(/\*/g, '[^.]+') + '$';
-    return new RegExp(regexStr);
+  // ⚡️ Performance: Cache the combined Allowlist Regex
+  // Creating one master regex for the whole schema is faster than looping .some() on array of regexes
+  const schemaKey = Object.keys(schema).sort().join('|');
+
+  const allowRegex = getCachedRegex(`allow:${schemaKey}`, () => {
+    const patterns = Object.keys(schema).map((path) => {
+      const norm = normalizePath(path);
+      return '^' + norm.replace(/\./g, '\\.').replace(/\*/g, '[^.]+') + '$';
+    });
+    // Create a giant OR regex: (^id$)|(^meta\.time$)
+    return new RegExp(patterns.join('|'));
   });
 
-  const isAllowed = (path: string) =>
-    allowedRegexes.some((regex) => regex.test(path));
+  traverse(target, '', allowRegex, defaultMask);
+}
 
-  const traverse = (current: any, currentPath: string) => {
-    if (!current || typeof current !== 'object') return;
+function traverse(
+  current: any,
+  currentPath: string,
+  allowRegex: RegExp,
+  defaultMask: MaskOptions
+) {
+  if (!current || typeof current !== 'object') return;
 
-    for (const key in current) {
-      if (Object.prototype.hasOwnProperty.call(current, key)) {
-        const val = current[key];
-        const newPath = currentPath ? `${currentPath}.${key}` : key;
+  // Optimization: Loop using for..in is generally fast enough,
+  // but Object.keys + for loop can be faster in V8 for large objects.
+  // Sticking to for..in for memory efficiency on deep recursion.
+  for (const key in current) {
+    // eslint-disable-next-line no-prototype-builtins
+    if (!Object.prototype.hasOwnProperty.call(current, key)) continue;
 
-        if (val && typeof val === 'object') {
-          // Arrays: traverse indices (items.0.id)
-          if (Array.isArray(val)) {
-            val.forEach((item, idx) => traverse(item, `${newPath}.${idx}`));
-          } else {
-            traverse(val, newPath);
-          }
-        } else {
-          // Primitive: Check allowlist
-          if (!isAllowed(newPath)) {
-            // Mask strings OR numbers/booleans by converting to string
-            if (['string', 'number', 'boolean'].includes(typeof val)) {
-              current[key] = MaskifyCore.mask(String(val), defaultMask);
-            }
-          }
+    const val = current[key];
+    const newPath = currentPath ? `${currentPath}.${key}` : key;
+
+    if (typeof val === 'object' && val !== null) {
+      if (Array.isArray(val)) {
+        for (let i = 0; i < val.length; i++) {
+          traverse(val[i], `${newPath}.${i}`, allowRegex, defaultMask);
+        }
+      } else {
+        traverse(val, newPath, allowRegex, defaultMask);
+      }
+    } else {
+      // Primitive: Test against pre-compiled Master Regex
+      if (!allowRegex.test(newPath)) {
+        if (
+          typeof val === 'string' ||
+          typeof val === 'number' ||
+          typeof val === 'boolean'
+        ) {
+          current[key] = MaskifyCore.mask(String(val), defaultMask);
         }
       }
     }
-  };
-
-  traverse(target, '');
+  }
 }

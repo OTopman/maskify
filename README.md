@@ -1,7 +1,7 @@
 Here is the updated `README.md`. It documents the new **Smart Compiler**, **Auto-Discovery**, **Fastify Support**, **Streaming**, and all other features added in v3.3.0.
 
 
-# Maskify-TS
+# Maskify
 
 **Advanced data masking utility for Node.js & TypeScript** — intelligently mask emails, phones, credit cards, IPs, JWTs, and deeply nested object fields using a smart compiler.
 
@@ -242,6 +242,36 @@ interface MaskOptions {
 
 -----
 
+## 🧠 Deep Dive: Advanced Concepts
+### Smart Compiler (The Lexer)
+For unstructured text, Maskify uses a Lexer (Tokenizer) architecture instead of running multiple regex replacements.
+
+1. **Tokenization:** The input is scanned in a single pass using a Master Regex.
+2. **Transformation:** Tokens identified as PII (JWT, IP, Email) are masked; text is left alone
+3. **Reassembly:** The safe string is reconstructed.
+
+### Zero-Config Heuristics
+The ```autoMask()``` function uses two strategies to secure your data without a schema:
+
+1. **Key Matching:** Checks property names against a list of sensitive keywords (e.g., password, token, secret, cvv, ssn).
+2. **Value Analysis:** If the key is safe, it scans the value content to detect PII patterns like Emails, JWTs, Credit Cards, or IPs.
+
+### Allowlist Mode (Zero-Trust)
+In strict security environments, you may want to hide everything by default and only reveal specific fields.
+```typescript
+const sensitiveData = {
+  id: 123,
+  timestamp: 1600000000,
+  user: { name: 'John', ssn: '000-00-0000' }
+};
+
+// Only 'id' and 'timestamp' survive. Everything else is redacted.
+const safe = Maskify.maskSensitiveFields(sensitiveData, {
+  'id': {},
+  'timestamp': {}
+}, { mode: 'allow' });
+```
+
 ## Contributing
 
 Contributions are welcome\! Please fork the repository and submit a pull request.
@@ -251,6 +281,3 @@ Contributions are welcome\! Please fork the repository and submit a pull request
 MIT License
 
 Copyright (c) 2025 Temitope Okunlola
-
-```
-```

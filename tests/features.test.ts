@@ -1,6 +1,16 @@
 import { Maskify } from '../src/index';
+import { GlobalConfigLoader } from '../src/utils/config';
 
 describe('New Masking Features', () => {
+  // 🛡️ ISOLATION
+  beforeAll(() => {
+    jest.spyOn(GlobalConfigLoader, 'load').mockReturnValue({});
+  });
+
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
+
   describe('IP Masking', () => {
     it('should mask IPv4 correctly', () => {
       const result = Maskify.mask('192.168.1.50', { type: 'ip' });

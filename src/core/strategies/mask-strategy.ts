@@ -2,56 +2,66 @@ import { MaskifyCore } from '../maskify';
 import { MaskOptions } from '../../utils';
 import { splitPath } from '../../utils/paths';
 
-/**
- * Applies masking to specific paths defined in the schema (Blocklist).
- */
 export function applyMaskStrategy(
   target: any,
   schema: Record<string, MaskOptions>
 ): void {
-  const applyPath = (obj: any, path: string, opts: MaskOptions) => {
+  // Iterate schema entries
+  for (const [path, opts] of Object.entries(schema)) {
+    // ⚡️ Performance: Use cached path segments
     const segments = splitPath(path);
 
-    const recurse = (current: any, i: number): void => {
-      if (current == null) return;
-      const key = segments[i];
-      const isLast = i === segments.length - 1;
+    // Start recursion with pre-calculated segments
+    recurseMask(target, segments, 0, opts);
+  }
+}
 
-      // Handle Wildcards (*)
-      if (key === '*') {
-        if (Array.isArray(current)) {
-          for (const item of current) recurse(item, i + 1);
-        } else if (typeof current === 'object') {
-          for (const k in current) recurse(current[k], i + 1);
-        }
-        return;
+function recurseMask(
+  current: any,
+  segments: string[],
+  i: number,
+  opts: MaskOptions
+) {
+  if (current == null) return;
+
+  const key = segments[i];
+  const isLast = i === segments.length - 1;
+
+  // 1. Handle Wildcards (*)
+  if (key === '*') {
+    if (Array.isArray(current)) {
+      for (let j = 0; j < current.length; j++) {
+        recurseMask(current[j], segments, i + 1, opts);
       }
-
-      // Handle Numeric Indices
-      if (!isNaN(Number(key))) {
-        const idx = Number(key);
-        if (Array.isArray(current) && current[idx] != null) {
-          recurse(current[idx], i + 1);
-        }
-        return;
+    } else if (typeof current === 'object') {
+      for (const k in current) {
+        recurseMask(current[k], segments, i + 1, opts);
       }
+    }
+    return;
+  }
 
-      // Handle Object Keys
-      if (!(key in current)) return;
+  // 2. Handle Numeric Indices (Optimization: Check array directly)
+  if (Array.isArray(current)) {
+    // Only attempt if key looks like an index
+    const idx = parseInt(key, 10);
+    if (!isNaN(idx)) {
+      if (current[idx] != null)
+        recurseMask(current[idx], segments, i + 1, opts);
+    }
+    return;
+  }
 
-      if (isLast) {
-        if (typeof current[key] === 'string') {
-          current[key] = MaskifyCore.mask(current[key], opts);
-        }
-      } else {
-        recurse(current[key], i + 1);
-      }
-    };
+  // 3. Handle Object Keys
+  // Optimization: direct property access check is faster than 'in' operator for own props
+  const nextVal = current[key];
+  if (nextVal === undefined) return;
 
-    recurse(obj, 0);
-  };
-
-  for (const [path, opts] of Object.entries(schema)) {
-    applyPath(target, path, opts);
+  if (isLast) {
+    if (typeof nextVal === 'string') {
+      current[key] = MaskifyCore.mask(nextVal, opts);
+    }
+  } else {
+    recurseMask(nextVal, segments, i + 1, opts);
   }
 }

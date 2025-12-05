@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 import { createInterface } from 'readline';
 import { MaskifyCore } from '../core/maskify';
-import { loadConfig, MaskOptions } from '../utils';
+import { GlobalConfigLoader, MaskOptions } from '../utils';
 
 const args = process.argv.slice(2);
 
 function parseArgs() {
   // 1. Load file config first
-  const fileConfig = loadConfig();
+  const fileConfig = GlobalConfigLoader.load();
 
   // 2. Default options
   const options: {

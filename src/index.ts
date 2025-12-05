@@ -6,9 +6,11 @@ import { maskDeterministic } from './maskers';
 import { middlewares as _middlewares } from './middlewares';
 import { MiddlewareOptions } from './utils';
 
+// --- Exports for TypeDoc ---
 export { Mask } from './decorators';
-
-export { createMaskStream, MaskifyStream } from './stream';
+export { createMaskStream, MaskifyStream, type MaskStreamOptions } from './stream';
+export { type AutoMaskOptions } from './core/strategies/auto-strategy';
+export * from './utils/types'; // Exports MaskOptions, MaskSchemaOptions, MiddlewareOptions
 
 /**
  * Namespace for additional utilities
@@ -19,6 +21,7 @@ export namespace Maskify {
   export const pattern = MaskifyCore.pattern;
   export const maskSensitiveFields = MaskifyCore.maskSensitiveFields;
   export const deterministic = maskDeterministic;
+  export const autoMask = MaskifyCore.autoMask;
 
   /**
    * Smartly detects and masks sensitive data within unstructured text
@@ -29,7 +32,7 @@ export namespace Maskify {
   export const middlewares = _middlewares;
 
   /**
-   * Helper to apply masking to a class instance based on @Mask decorators.
+   * Helper to apply masking to a class instance based on `@Mask` decorators.
    */
   export function maskClass<T extends object>(instance: T): T {
     // Lazy load metadata key to avoid circular deps if defined elsewhere

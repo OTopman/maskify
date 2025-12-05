@@ -1,6 +1,16 @@
 import { Maskify } from '../src/index';
+import { GlobalConfigLoader } from '../src/utils/config';
 
 describe('Maskify Utility', () => {
+  // 🛡️ ISOLATION: Ignore real maskify.config.js during this test
+  beforeAll(() => {
+    jest.spyOn(GlobalConfigLoader, 'load').mockReturnValue({});
+  });
+
+  afterAll(() => {
+    jest.restoreAllMocks();
+  });
+
   describe('Maskify.mask()', () => {
     it('should mask an email correctly', () => {
       const masked = Maskify.mask('john.doe@example.com', {
@@ -122,12 +132,10 @@ describe('Maskify Utility', () => {
         'groups[*].users[*].email': { type: 'email' },
       }) as typeof data;
 
-      // ✅ Masked emails should differ from originals
       expect(masked.groups[0].users[0].email).not.toBe('alpha@omega.com');
       expect(masked.groups[0].users[1].email).not.toBe('b@b.com');
       expect(masked.groups[1].users[0].email).not.toBe('c@c.com');
 
-      // ✅ Ensure overall structure is preserved
       expect(masked.groups).toHaveLength(2);
       expect(masked.groups[0].users).toHaveLength(2);
       expect(masked.groups[1].users).toHaveLength(1);

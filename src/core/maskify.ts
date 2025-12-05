@@ -13,39 +13,73 @@ import {
 } from '../maskers';
 import {
   Detectors,
+  GlobalConfigLoader,
   MaskableType,
   MaskOptions,
   MaskSchemaOptions,
   safeClone,
 } from '../utils';
 import { applyAllowStrategy } from './strategies/allow-strategy';
+import { applyAutoStrategy, AutoMaskOptions } from './strategies/auto-strategy';
 import { applyMaskStrategy } from './strategies/mask-strategy';
 
 export class MaskifyCore {
-  static mask(
-    value: string,
-    opts: MaskOptions = { maskChar: '*', maxAsterisks: 4, autoDetect: true }
-  ): string {
+  /**
+   * Helper to merge user options with global config
+   */
+  private static getEffectiveOptions(opts: MaskOptions = {}): MaskOptions {
+    const globalDefaults = GlobalConfigLoader.load().maskOptions || {};
+    // User options take precedence over global defaults
+    return { ...globalDefaults, ...opts };
+  }
+
+  static mask(value: string, opts?: MaskOptions): string {
+    // Merge defaults
+    const options = MaskifyCore.getEffectiveOptions(opts);
+    const { autoDetect = true, type } = options;
+
     if (!value) return value;
     const trimmed = value.trim();
-    if (opts.transform) {
-      return opts.transform(trimmed);
+    if (options.transform) {
+      return options.transform(trimmed);
     }
 
-    const { autoDetect = true, type } = opts;
-
     // If pattern exists, it takes the highest precedence
-    if (opts.pattern) return maskPattern(trimmed, opts.pattern, opts);
+    if (options.pattern) return maskPattern(trimmed, options.pattern, opts);
 
-    if (type) return MaskifyCore.maskByType(trimmed, type, opts);
+    if (type) return MaskifyCore.maskByType(trimmed, type, options);
 
     // If autoDetect → infer type using detectors
     if (autoDetect) {
       const inferredType = Detectors.detectType(trimmed);
-      return MaskifyCore.maskByType(trimmed, inferredType, opts);
+      return MaskifyCore.maskByType(trimmed, inferredType, options);
     }
 
-    return maskGeneric(trimmed, opts);
+    return maskGeneric(trimmed, options);
+  }
+
+  static autoMask<T extends object>(
+    data: T | T[],
+    options?: AutoMaskOptions
+  ): T | T[] {
+    const globalConfig = GlobalConfigLoader.load();
+    const globalMaskOpts = globalConfig.maskOptions || {};
+
+    // Merge: User Options > Global Config > Defaults
+    const effectiveOptions: AutoMaskOptions = {
+      ...globalMaskOpts,
+      ...options,
+    };
+
+    const clone = safeClone<T | T[]>(data);
+
+    if (Array.isArray(clone)) {
+      clone.forEach((item) => applyAutoStrategy(item, effectiveOptions));
+    } else {
+      applyAutoStrategy(clone, effectiveOptions);
+    }
+
+    return clone;
   }
 
   /**
@@ -105,16 +139,22 @@ export class MaskifyCore {
   static maskSensitiveFields<T extends object>(
     data: T | T[],
     schema: Record<string, MaskOptions>,
-    options: MaskSchemaOptions = { mode: 'mask' }
+    options?: MaskSchemaOptions
   ): T | T[] {
     const clone = safeClone<T | T[]>(data);
+    const globalConfig = GlobalConfigLoader.load();
 
-    if (options.mode === 'allow') {
-      applyAllowStrategy(
-        clone,
-        schema,
-        options.defaultMask || { type: 'generic' }
-      );
+    // Determine Mode: User Arg > Config File > Default 'mask'
+    const mode = options?.mode || globalConfig.mode || 'mask';
+
+    // Determine Default Mask Options
+    const defaultMask = {
+      ...(globalConfig.maskOptions || {}),
+      ...(options?.defaultMask || {}),
+    };
+
+    if (mode === 'allow') {
+      applyAllowStrategy(clone, schema, defaultMask);
     } else {
       applyMaskStrategy(clone, schema);
     }
