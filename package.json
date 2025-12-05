@@ -1,6 +1,6 @@
 {
   "name": "maskify-ts",
-  "version": "3.3.2",
+  "version": "3.4.0",
   "description": "Advanced data masking utility for Node.js — safely mask emails, phones, cards, and nested object fields with wildcard support.",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",

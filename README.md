@@ -13,6 +13,7 @@ It’s ideal for logging, analytics, and compliance scenarios (e.g., GDPR/PII re
 - ✅ **Smart Compiler:** High-performance, single-pass lexer that identifies and masks PII patterns (Email, IP, JWT, etc.) within unstructured text logs.
 - ✅ **Zero-Config Auto-Masking:** Heuristic analysis to automatically detect and mask sensitive data in objects without manual schema definition.
 - ✅ **Deep Masking:** Mask strings, objects, arrays, and nested fields with zero mutation (non-destructive).
+- ✅ **Database Integrations:** Native support for **Prisma**, **TypeORM**, and **Mongoose** to mask data at the database layer.
 - ✅ **Class Decorators:** Declarative masking using `@Mask` on DTOs and Entities.
 - ✅ **Stream Support:** High-performance masking for large files and logs (Transform Streams).
 - ✅ **Advanced Modes:** Support for **Allowlist** (Mask everything *except* X) and **Blocklist**.
@@ -115,6 +116,51 @@ const hash1 = Maskify.deterministic(email, opts);
 const hash2 = Maskify.deterministic(email, opts);
 
 console.log(hash1 === hash2); // true (e.g., "a3f12b9...")
+```
+
+### 5\. 🗄️ Database Integrations
+
+Automatically mask data at the database layer before it reaches your application logic.
+
+#### Prisma
+
+```typescript
+import { PrismaClient } from '@prisma/client';
+import { Maskify } from 'maskify-ts';
+
+const prisma = new PrismaClient().$extends(
+  Maskify.middlewares.prisma({
+    fields: ['password', 'user.email'],
+    maskOptions: { maskChar: '*' }
+  })
+);
+```
+
+#### TypeORM
+```typescript
+import { DataSource } from 'typeorm';
+import { Maskify } from 'maskify-ts';
+
+const dataSource = new DataSource({
+  // ... config
+  subscribers: [
+    // Automatically masks entities loaded with @Mask decorators
+    Maskify.middlewares.typeorm()
+  ]
+});
+```
+
+#### Mongoose
+```typescript
+import mongoose from 'mongoose';
+import { Maskify } from 'maskify-ts';
+
+const userSchema = new mongoose.Schema({ ... });
+
+userSchema.plugin(Maskify.middlewares.mongoose, {
+  fields: ['ssn', 'credit_card'],
+  autoMaskJSON: true // Automatically masks when res.json() is called
+});
 ```
 
 -----
