@@ -1,16 +1,27 @@
-import express from 'express';
+import 'reflect-metadata';
+
+import type { Application as ExpressApp } from 'express';
 import { FastifyInstance } from 'fastify';
+import { registerDefaults } from './core/bootstrap';
 import { SmartMasker } from './core/compiler';
 import { MaskifyCore } from './core/maskify';
-import { maskDeterministic } from './maskers';
+import { AutoMaskOptions } from './core/strategies/auto-strategy';
+import { maskDeterministic } from './maskers/deterministic';
 import { middlewares as _middlewares } from './middlewares';
-import { MiddlewareOptions } from './utils';
+import { MaskOptions, MiddlewareOptions } from './utils';
 
-// --- Exports for TypeDoc ---
+// Initialize defaults
+registerDefaults();
+
+// export * from './core/maskify';
+
 export { Mask } from './decorators';
-export { createMaskStream, MaskifyStream, type MaskStreamOptions } from './stream';
-export { type AutoMaskOptions } from './core/strategies/auto-strategy';
-export * from './utils/types'; // Exports MaskOptions, MaskSchemaOptions, MiddlewareOptions
+export {
+  createMaskStream,
+  MaskifyStream,
+  type MaskStreamOptions,
+} from './stream';
+export type { AutoMaskOptions, MaskOptions, MiddlewareOptions };
 
 /**
  * Namespace for additional utilities
@@ -58,10 +69,10 @@ export namespace Maskify {
    * Attach Maskify middleware to a server instance
    * @param app Express app
    * @param options MiddlewareOptions (fields, patterns, etc.)
-   * @param type 'express' (default: 'express')
+   * @param type 'express' | 'fastify' (default: 'express')
    */
   export const use = (
-    app: any | FastifyInstance | express.Application,
+    app: any | FastifyInstance | ExpressApp,
     options: MiddlewareOptions,
     type: 'express' | 'fastify' = 'express'
   ) => {

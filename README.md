@@ -8,6 +8,38 @@
 
 It’s ideal for logging, analytics, and compliance scenarios (e.g., GDPR/PII redaction, HIPAA) where sensitive data must be obscured before storage or transmission.
 
+> 🔒 **Production-Ready Data Masking** for GDPR, HIPAA, and PCI-DSS Compliance
+
+It's ideal for logging, analytics, and compliance scenarios (e.g., GDPR/PII redaction, HIPAA) where sensitive data must be obscured before storage or transmission.
+
+---
+
+## 📊 Why Maskify?
+
+| Feature | Maskify | Alternatives |
+|---------|---------|--------------|
+| Smart Pattern Detection | ✅ Auto-detects PII | ❌ Manual config |
+| TypeScript Support | ✅ Full | ⚠️ Partial |
+| Zero Dependencies* | ✅ Minimal | ⚠️ Heavy |
+| Streaming Support | ✅ Yes | ❌ No |
+| Framework Integration | ✅ Express/Fastify | ❌ Limited |
+| Performance | ✅ Single-pass lexer | ⚠️ Multi-regex |
+| CLI Tool | ✅ Yes | ⚠️ Limited |
+
+*Reflects-metadata only needed for decorators
+
+---
+
+
+## ☕ Support the Project
+
+If Maskify helps you, consider supporting the development:
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/maskify)
+<!-- [![Sponsor](https://img.shields.io/badge/GitHub%20Sponsor-ea4aaa?style=for-the-badge&logo=github&logoColor=white)](https://github.com/sponsors/OTopman) -->
+
+---
+
 ## ⚡️ Features
 
 - ✅ **Smart Compiler:** High-performance, single-pass lexer that identifies and masks PII patterns (Email, IP, JWT, etc.) within unstructured text logs.
@@ -315,12 +347,31 @@ const safe = Maskify.maskSensitiveFields(sensitiveData, {
 }, { mode: 'allow' });
 ```
 
-## Contributing
+---
 
-Contributions are welcome\! Please fork the repository and submit a pull request.
+## 🚨 Security
 
-## License
+For security vulnerabilities, see [SECURITY.md](SECURITY.md).
 
-MIT License
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING. md) for guidelines.
+
+---
+
+## 📄 License
+
+MIT License — See [LICENSE](LICENSE) file for details. 
 
 Copyright (c) 2025 Temitope Okunlola
+
+---
+
+## 🙏 Support
+
+- 📖 [Full Documentation](https://github.com/OTopman/maskify)
+- 💬 [GitHub Discussions](https://github.com/OTopman/maskify/discussions)
+- 🐛 [Report Issues](https://github.com/OTopman/maskify/issues)
+- ⭐ **Like Maskify? Please give us a star!**

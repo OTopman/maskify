@@ -1,16 +1,4 @@
-import {
-  maskAddress,
-  maskCard,
-  maskDeterministic,
-  maskEmail,
-  maskGeneric,
-  maskIp,
-  maskJwt,
-  maskName,
-  maskPattern,
-  maskPhone,
-  maskUrl,
-} from '../maskers';
+import { maskDeterministic, maskGeneric, maskPattern } from '../maskers';
 import {
   Detectors,
   GlobalConfigLoader,
@@ -19,20 +7,31 @@ import {
   MaskSchemaOptions,
   safeClone,
 } from '../utils';
+import { registry } from './registry';
 import { applyAllowStrategy } from './strategies/allow-strategy';
 import { applyAutoStrategy, AutoMaskOptions } from './strategies/auto-strategy';
 import { applyMaskStrategy } from './strategies/mask-strategy';
 
 export class MaskifyCore {
   /**
-   * Helper to merge user options with global config
+   * Helper to merge provided options with global configuration.
+   * @param opts - Per-call options.
+   * @param config - Optional global config override (dependency injection).
    */
-  private static getEffectiveOptions(opts: MaskOptions = {}): MaskOptions {
-    const globalDefaults = GlobalConfigLoader.load().maskOptions || {};
-    // User options take precedence over global defaults
+  private static getEffectiveOptions(
+    opts: MaskOptions = {},
+    configOverride?: MaskOptions
+  ): MaskOptions {
+    const globalDefaults =
+      configOverride || GlobalConfigLoader.load().maskOptions || {};
     return { ...globalDefaults, ...opts };
   }
 
+  /**
+   * Masks a single value based on the provided options.
+   * @param value - The string to mask.
+   * @param opts - Masking options.
+   */
   static mask(value: string, opts?: MaskOptions): string {
     // Merge defaults
     const options = MaskifyCore.getEffectiveOptions(opts);
@@ -98,65 +97,65 @@ export class MaskifyCore {
     return maskPattern(value, pattern, option);
   }
 
+  /**
+   * Delegates masking to the registered handler.
+   */
   private static maskByType(
     value: string,
     type: MaskableType,
     opts: MaskOptions
   ) {
-    switch (type) {
-      case 'email':
-        return maskEmail(value, opts);
-      case 'phone':
-        return maskPhone(value, opts);
-      case 'card':
-        return maskCard(value, opts);
-      case 'address':
-        return maskAddress(value, opts);
-      case 'name':
-        return maskName(value, opts);
-      case 'ip':
-        return maskIp(value);
-      case 'jwt':
-        return maskJwt(value, opts);
-      case 'url':
-        return maskUrl(value, opts);
-      case 'generic':
-      default:
-        if ((opts as any).secret) return maskDeterministic(value, opts as any);
-        return maskGeneric(value, opts);
+    const masker = registry.get(type);
+    if (masker) {
+      return masker(value, opts);
     }
+    if ((opts as any).secret) return maskDeterministic(value, opts as any);
+
+    return maskGeneric(value, opts);
   }
 
   /**
    * Mask fields in nested object/array based on schema.
-   * schema: Record<path, MaskOptions>
    *
    * Supports:
    * - dot paths: 'user.email'
    * - array wildcard: 'users[*].email'
    * - numeric indices: 'cards[0].number'
+   *
+   * @param data - The object or array to mask.
+   * @param schema - Map of paths to mask options (e.g. { 'user.email': { type: 'email' } })
+   * @param options - Configuration for the schema application (mode, defaultMask).
+   * @param configOverride - Optional global config injection.
    */
   static maskSensitiveFields<T extends object>(
     data: T | T[],
     schema: Record<string, MaskOptions>,
-    options?: MaskSchemaOptions
+    options?: MaskSchemaOptions,
+    configOverride?: MaskOptions
   ): T | T[] {
     const clone = safeClone<T | T[]>(data);
+    // Load config via our helper (which handles DI and loading)
     const globalConfig = GlobalConfigLoader.load();
+    const globalMaskOpts = configOverride || globalConfig.maskOptions || {};
 
-    // Determine Mode: User Arg > Config File > Default 'mask'
+    // Determine Mode
     const mode = options?.mode || globalConfig.mode || 'mask';
 
     // Determine Default Mask Options
     const defaultMask = {
-      ...(globalConfig.maskOptions || {}),
+      ...globalMaskOpts,
       ...(options?.defaultMask || {}),
     };
 
+    const maskCallback = (val: string, fieldOpts: MaskOptions) => {
+      // We merge fieldOpts with global defaults inside MaskifyCore.mask
+      return MaskifyCore.mask(val, { ...globalMaskOpts, ...fieldOpts });
+    };
+
     if (mode === 'allow') {
-      applyAllowStrategy(clone, schema, defaultMask);
+      applyAllowStrategy(clone, schema, defaultMask, maskCallback);
     } else {
-      applyMaskStrategy(clone, schema);
+      applyMaskStrategy(clone, schema, maskCallback);
     }
 
     return clone;

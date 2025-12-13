@@ -1,18 +1,17 @@
-import { MaskifyCore } from '../maskify';
 import { MaskOptions } from '../../utils';
 import { splitPath } from '../../utils/paths';
 
+// Define the contract for the masking callback
+export type MaskingCallback = (value: string, options: MaskOptions) => string;
+
 export function applyMaskStrategy(
   target: any,
-  schema: Record<string, MaskOptions>
+  schema: Record<string, MaskOptions>,
+  maskFn: MaskingCallback
 ): void {
-  // Iterate schema entries
   for (const [path, opts] of Object.entries(schema)) {
-    // ⚡️ Performance: Use cached path segments
     const segments = splitPath(path);
-
-    // Start recursion with pre-calculated segments
-    recurseMask(target, segments, 0, opts);
+    recurseMask(target, segments, 0, opts, maskFn);
   }
 }
 
@@ -20,7 +19,8 @@ function recurseMask(
   current: any,
   segments: string[],
   i: number,
-  opts: MaskOptions
+  opts: MaskOptions,
+  maskFn: MaskingCallback
 ) {
   if (current == null) return;
 
@@ -31,37 +31,35 @@ function recurseMask(
   if (key === '*') {
     if (Array.isArray(current)) {
       for (let j = 0; j < current.length; j++) {
-        recurseMask(current[j], segments, i + 1, opts);
+        recurseMask(current[j], segments, i + 1, opts, maskFn);
       }
     } else if (typeof current === 'object') {
       for (const k in current) {
-        recurseMask(current[k], segments, i + 1, opts);
+        recurseMask(current[k], segments, i + 1, opts, maskFn);
       }
     }
     return;
   }
 
-  // 2. Handle Numeric Indices (Optimization: Check array directly)
+  // 2. Handle Numeric Indices
   if (Array.isArray(current)) {
-    // Only attempt if key looks like an index
     const idx = parseInt(key, 10);
-    if (!isNaN(idx)) {
-      if (current[idx] != null)
-        recurseMask(current[idx], segments, i + 1, opts);
+    if (!isNaN(idx) && current[idx] != null) {
+      recurseMask(current[idx], segments, i + 1, opts, maskFn);
     }
     return;
   }
 
   // 3. Handle Object Keys
-  // Optimization: direct property access check is faster than 'in' operator for own props
   const nextVal = current[key];
   if (nextVal === undefined) return;
 
   if (isLast) {
     if (typeof nextVal === 'string') {
-      current[key] = MaskifyCore.mask(nextVal, opts);
+      // Use the injected function instead of static MaskifyCore.mask
+      current[key] = maskFn(nextVal, opts);
     }
   } else {
-    recurseMask(nextVal, segments, i + 1, opts);
+    recurseMask(nextVal, segments, i + 1, opts, maskFn);
   }
 }

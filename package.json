@@ -5,6 +5,10 @@
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "module": "dist/src/index.esm.js",
+  "funding": {
+    "type": "individual",
+    "url": "https://buymeacoffee.com/maskify"
+  },
   "files": [
     "dist"
   ],

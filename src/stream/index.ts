@@ -1,7 +1,6 @@
 import { Transform, TransformCallback } from 'stream';
 import { MaskifyCore } from '../core/maskify';
 import { GlobalConfigLoader, MaskOptions } from '../utils';
-import { Maskify } from '..';
 
 export interface MaskStreamOptions extends MaskOptions {
   /** Schema for masking fields in object mode */
@@ -9,11 +8,15 @@ export interface MaskStreamOptions extends MaskOptions {
 
   /** 'mask' (blocklist) or 'allow' (allowlist) */
   mode?: 'mask' | 'allow';
+
+  /** Allow injecting a specific config instead of loading global file */
+  configOverride?: MaskOptions;
 }
 
 export class MaskifyStream extends Transform {
   private schema: Record<string, MaskOptions>;
   private options: MaskStreamOptions;
+  private configOverride?: MaskOptions;
 
   constructor(
     schema?: Record<string, MaskOptions>,
@@ -21,26 +24,31 @@ export class MaskifyStream extends Transform {
   ) {
     super({ objectMode: true }); // Enable object mode for passing JSON objects directly
 
-    // Load Global Config
-    const globalConfig = GlobalConfigLoader.load();
+    this.configOverride = options?.configOverride;
 
-    // If no schema provided, maybe use global 'fields' from config?
-    // For streams, explicit schema is usually preferred, but we can fallback.
+    // 1. Load File Config (once)
+    const fileConfig = GlobalConfigLoader.load();
+
+    // 2. Resolve Effective Global Options (Injection > File > Empty)
+    const globalMaskOpts = this.configOverride || fileConfig.maskOptions || {};
+
+    // 3. Merge Options
+    this.options = {
+      mode: options?.mode || fileConfig.mode || 'mask',
+      ...globalMaskOpts,
+      ...options,
+    };
+
+    // 4. Resolve Schema
+    // If no schema provided, fallback to 'fields' from the loaded config
     let effectiveSchema = schema || {};
-    if (!schema && globalConfig.fields) {
-      const globalMaskOpts = globalConfig.maskOptions || {};
+    if (!schema && fileConfig.fields) {
       effectiveSchema = Object.fromEntries(
-        globalConfig.fields.map((field) => [field, globalMaskOpts])
+        fileConfig.fields.map((field) => [field, globalMaskOpts])
       );
     }
 
     this.schema = effectiveSchema;
-    
-    this.options = {
-      mode: options?.mode || globalConfig.mode || 'mask',
-      ...globalConfig.maskOptions, // Global defaults
-      ...options, // User overrides
-    };
   }
 
   _transform(
@@ -56,33 +64,48 @@ export class MaskifyStream extends Transform {
       if (Buffer.isBuffer(chunk) || typeof chunk === 'string') {
         isBuffer = true;
         const str = chunk.toString();
+
         // Skip empty lines
         if (!str.trim()) {
           this.push(chunk);
           return callback();
         }
+
         try {
           data = JSON.parse(str);
         } catch {
-          // Not JSON? Maybe use Smart Compiler here for unstructured logs?
-          // For now, let's pass through or implement smart masking for strings
-          // If the user didn't provide a schema, we assume they might want smart masking on strings
+          // Not JSON?
+          // Fallback: Smart Masking on unstructured text
+          // If no schema was provided, we assume the user wants to scan the raw string.
           if (Object.keys(this.schema).length === 0) {
-            const masked = Maskify.smart(str);
+            // Fix: Use MaskifyCore directly to avoid circular dependency with index.ts
+            const masked = MaskifyCore.mask(str, {
+              ...this.options,
+              autoDetect: true,
+            });
+
             this.push(masked);
-            this.push(chunk); // Default behavior: pass through
+            // 🛑 REMOVED: this.push(chunk); -> This was leaking the original data!
             return callback();
           }
+
+          // If a schema WAS provided but parsing failed, we can't apply it.
+          // Pass through original or error out? Standard streams pass through on partial failure.
           this.push(chunk);
           return callback();
         }
       }
 
-      // Perform Masking
-      const masked = MaskifyCore.maskSensitiveFields(data, this.schema, {
-        mode: this.options.mode,
-        defaultMask: this.options,
-      });
+      // Perform Masking on Object
+      const masked = MaskifyCore.maskSensitiveFields(
+        data,
+        this.schema,
+        {
+          mode: this.options.mode,
+          defaultMask: this.options,
+        },
+        this.configOverride // Pass injected config to core
+      );
 
       // Push back in the same format received
       if (isBuffer) {
@@ -93,6 +116,7 @@ export class MaskifyStream extends Transform {
       callback();
     } catch (err) {
       // Allow stream to continue even if one line fails
+      // In production, you might want to emit an 'error' event or log this.
       callback(null, chunk);
     }
   }

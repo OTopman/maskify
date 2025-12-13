@@ -1,4 +1,5 @@
 import { MaskOptions } from '../utils';
+import { DEFAULT_MASK_OPTIONS } from '../utils/defaults';
 
 /**
  * Masks an email address while preserving its recognisable structure.
@@ -21,12 +22,17 @@ export function maskEmail(
     return email || '';
   }
 
+  const config = {
+    ...DEFAULT_MASK_OPTIONS,
+    ...options,
+  };
+
   const {
     maxAsterisks = 4,
     visibleStart = 0,
     visibleEnd = 0,
     maskChar = '*',
-  } = options;
+  } = config;
 
   const [localPart, domainPart] = email.split('@');
   if (!localPart || !domainPart) return email;

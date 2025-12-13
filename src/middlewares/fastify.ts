@@ -38,13 +38,23 @@ const fastifyPlugin = async (
         } else {
           // Already an object? (Rare in onSend, but handle it)
           return JSON.stringify(
-            MaskifyCore.maskSensitiveFields(payload as object, schema)
+            MaskifyCore.maskSensitiveFields(
+              payload as object,
+              schema,
+              undefined,
+              globalOptions
+            )
           );
         }
 
         // 3. Parse, Mask, Stringify
         const json = JSON.parse(jsonString);
-        const masked = MaskifyCore.maskSensitiveFields(json, schema);
+        const masked = MaskifyCore.maskSensitiveFields(
+          json,
+          schema,
+          undefined,
+          globalOptions
+        );
         return JSON.stringify(masked);
       } catch (err) {
         // If parsing fails (e.g. HTML/Plain text), return original

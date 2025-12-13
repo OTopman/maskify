@@ -4,7 +4,7 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
-## v3.4.0 - 2025-12-06
+## v3.4.0 - 2025-12-13
 ### 🚀 New Features
 - **Database Integrations**: Added native middleware and plugins for major ORMs to mask data at the database layer:
     - **Prisma**: Added `$extends` extension for masking read operations (`findUnique`, `findMany`).
