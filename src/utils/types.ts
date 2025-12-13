@@ -33,6 +33,14 @@ export interface MaskOptions {
   transform?: (value: string) => string;
 }
 
+export interface AutoMaskOptions extends MaskOptions {
+  /** List of keys to automatically mask (e.g. "password", "secret") */
+  sensitiveKeys?: string[];
+
+  /** List of types to automatically detect in values (e.g. "email", "ip") */
+  autoDetectTypes?: MaskableType[];
+}
+
 export type MaskSchema = Record<string, MaskOptions>;
 
 export interface MaskSchemaOptions {

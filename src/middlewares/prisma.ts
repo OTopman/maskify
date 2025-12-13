@@ -3,13 +3,16 @@ import { MiddlewareOptions } from '../utils';
 
 export function prisma(options: MiddlewareOptions) {
   const { fields, maskOptions: globalOptions } = options;
+  let schema: Record<string, any> | null = null;
 
-  const schema = Object.fromEntries(
-    fields.map((f) => {
-      if (typeof f === 'string') return [f, globalOptions || {}];
-      return [f.name, { ...(globalOptions || {}), ...(f.options || {}) }];
-    })
-  );
+  if (fields && fields.length > 0) {
+    schema = Object.fromEntries(
+      fields.map((f) => {
+        if (typeof f === 'string') return [f, globalOptions || {}];
+        return [f.name, { ...(globalOptions || {}), ...(f.options || {}) }];
+      })
+    );
+  }
 
   return {
     name: 'maskify-prisma',
@@ -23,7 +26,10 @@ export function prisma(options: MiddlewareOptions) {
               operation
             )
           ) {
-            return MaskifyCore.maskSensitiveFields(result, schema);
+            if (schema) {
+              return MaskifyCore.maskSensitiveFields(result, schema);
+            }
+            return MaskifyCore.autoMask(result, globalOptions);
           }
           return result;
         },

@@ -5,10 +5,9 @@ import { FastifyInstance } from 'fastify';
 import { registerDefaults } from './core/bootstrap';
 import { SmartMasker } from './core/compiler';
 import { MaskifyCore } from './core/maskify';
-import { AutoMaskOptions } from './core/strategies/auto-strategy';
 import { maskDeterministic } from './maskers/deterministic';
 import { middlewares as _middlewares } from './middlewares';
-import { MaskOptions, MiddlewareOptions } from './utils';
+import { AutoMaskOptions, MaskOptions, MiddlewareOptions } from './utils';
 
 // Initialize defaults
 registerDefaults();

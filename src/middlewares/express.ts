@@ -20,23 +20,25 @@ export function express(options: MiddlewareOptions) {
   ensureExpressInstalled();
 
   const { fields, maskOptions: globalOptions } = options;
+  let schema: Record<string, any> | null = null;
 
-  // Build schema dynamically from `fields`
-  const schema = Object.fromEntries(
-    fields.map((f) => {
-      if (typeof f === 'string') {
-        return [f, globalOptions || {}];
-      }
-
-      return [
-        f.name,
-        {
-          ...(globalOptions || {}),
-          ...(f.options || {}),
-        },
-      ];
-    })
-  );
+  // Build schema dynamically if fields are provided
+  if (fields && fields.length > 0) {
+    schema = Object.fromEntries(
+      fields.map((f) => {
+        if (typeof f === 'string') {
+          return [f, globalOptions || {}];
+        }
+        return [
+          f.name,
+          {
+            ...(globalOptions || {}),
+            ...(f.options || {}),
+          },
+        ];
+      })
+    );
+  }
 
   return (_: Request, res: Response, next: NextFunction) => {
     const originalJson = res.json.bind(res);
@@ -44,12 +46,12 @@ export function express(options: MiddlewareOptions) {
     res.json = (data: any) => {
       if (!data || typeof data !== 'object') return originalJson(data);
 
-      const masked = MaskifyCore.maskSensitiveFields(
-        data,
-        schema,
-        undefined,
-        globalOptions
-      );
+      let masked;
+      if (schema) {
+        masked = MaskifyCore.maskSensitiveFields(data, schema);
+      } else {
+        masked = MaskifyCore.autoMask(data, globalOptions);
+      }
 
       return originalJson(masked);
     };

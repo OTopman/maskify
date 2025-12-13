@@ -1,5 +1,6 @@
 import { maskDeterministic, maskGeneric, maskPattern } from '../maskers';
 import {
+  AutoMaskOptions,
   Detectors,
   GlobalConfigLoader,
   MaskableType,
@@ -9,7 +10,7 @@ import {
 } from '../utils';
 import { registry } from './registry';
 import { applyAllowStrategy } from './strategies/allow-strategy';
-import { applyAutoStrategy, AutoMaskOptions } from './strategies/auto-strategy';
+import { applyAutoStrategy } from './strategies/auto-strategy';
 import { applyMaskStrategy } from './strategies/mask-strategy';
 
 export class MaskifyCore {
