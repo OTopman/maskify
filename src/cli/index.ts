@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 import { createInterface } from 'readline';
+import { registerDefaults } from '../core/bootstrap'; // 1. Import bootstrap
 import { MaskifyCore } from '../core/maskify';
 import { GlobalConfigLoader, MaskOptions } from '../utils';
+
+// Registry initialization
+registerDefaults();
 
 const args = process.argv.slice(2);
 
@@ -28,8 +32,6 @@ function parseArgs() {
     switch (arg) {
       case '--fields':
       case '-f':
-        // CLI fields append to or replace config? Usually replace or merge.
-        // Let's replace for explicit control.
         options.fields = args[++i]?.split(',').map((s) => s.trim()) || [];
         break;
       case '--char':
@@ -75,9 +77,6 @@ async function main() {
     process.exit(0);
   }
 
-  // Allow empty fields ONLY if we are in 'mask' mode and maybe they just want generic masking?
-  // But usually, no fields in 'mask' mode means nothing happens.
-  // In 'allow' mode, no fields means EVERYTHING is masked.
   if (options.fields.length === 0 && options.mode === 'mask') {
     console.error(
       'Error: No fields specified. Use -f or create a config file.'
@@ -85,6 +84,7 @@ async function main() {
     process.exit(1);
   }
 
+  // This object represents the "Effective Global Configuration" for this run
   const maskOpts: MaskOptions = {
     maskChar: options.maskChar,
     autoDetect: true,
@@ -104,12 +104,20 @@ async function main() {
     if (!line.trim()) continue;
     try {
       const json = JSON.parse(line);
-      const masked = MaskifyCore.maskSensitiveFields(json, schema, {
-        mode: options.mode,
-        defaultMask: maskOpts,
-      });
+
+      const masked = MaskifyCore.maskSensitiveFields(
+        json,
+        schema,
+        {
+          mode: options.mode,
+          defaultMask: maskOpts,
+        },
+        maskOpts
+      );
+
       console.log(JSON.stringify(masked));
     } catch (e) {
+      // If valid JSON cannot be parsed, output the raw line (standard unix tool behavior)
       console.log(line);
     }
   }

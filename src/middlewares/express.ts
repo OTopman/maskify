@@ -44,7 +44,12 @@ export function express(options: MiddlewareOptions) {
     res.json = (data: any) => {
       if (!data || typeof data !== 'object') return originalJson(data);
 
-      const masked = MaskifyCore.maskSensitiveFields(data, schema);
+      const masked = MaskifyCore.maskSensitiveFields(
+        data,
+        schema,
+        undefined,
+        globalOptions
+      );
 
       return originalJson(masked);
     };

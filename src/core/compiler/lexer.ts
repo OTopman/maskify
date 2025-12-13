@@ -8,7 +8,7 @@ export interface Token {
 
 export class Lexer {
   private static masterRegex: RegExp;
-  private static groupMap: TokenType[];
+  private static groupIndexMap: Map<number, TokenType>;
 
   /**
    * Lazy-initializes the master regex for O(1) repeated access.
@@ -17,15 +17,21 @@ export class Lexer {
   private static init() {
     if (this.masterRegex) return;
 
+    this.groupIndexMap = new Map();
+    let nextGroupIndex = 1;
+
     // Create capturing groups for each pattern
-    const patternSources = PATTERNS.map((p) => `(${p.regex.source})`);
+    const patternSources = PATTERNS.map((p) => {
+      this.groupIndexMap.set(nextGroupIndex, p.type);
+      const source = p.regex.source;
+      const numGroups = new RegExp(`${source}|`).exec('')!.length - 1;
+      nextGroupIndex += 1 + numGroups;
+
+      return `(${source})`;
+    });
 
     // Join with OR (|) and add the global flag (g)
     this.masterRegex = new RegExp(patternSources.join('|'), 'g');
-
-    // Map the capturing group index to the Token Type
-    // Group 1 = JWT, Group 2 = URL, etc.
-    this.groupMap = PATTERNS.map((p) => p.type);
   }
 
   /**
@@ -61,9 +67,10 @@ export class Lexer {
       let type = TokenType.TEXT;
       for (let i = 1; i < match.length; i++) {
         if (match[i] !== undefined) {
-          // Map 1-based regex group to 0-based groupMap array
-          type = this.groupMap[i - 1];
-          break;
+          if (this.groupIndexMap.has(i)) {
+            type = this.groupIndexMap.get(i)!;
+            break;
+          }
         }
       }
 

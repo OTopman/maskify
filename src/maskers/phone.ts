@@ -1,4 +1,5 @@
 import { MaskOptions } from '../utils';
+import { DEFAULT_MASK_OPTIONS } from '../utils/defaults';
 
 /**
  * Mask a phone number.
@@ -16,12 +17,18 @@ export function maskPhone(
     'maxAsterisks' | 'maskChar' | 'visibleStart' | 'visibleEnd'
   > = {}
 ): string {
+  const config = {
+    ...DEFAULT_MASK_OPTIONS,
+    visibleStart: 2, // Phone specific override
+    visibleEnd: 3, // Phone specific override
+    ...options,
+  };
   const {
     maxAsterisks = 4,
     maskChar = '*',
     visibleStart = 2,
     visibleEnd = 3,
-  } = options;
+  } = config;
 
   if (!phone) return '';
 

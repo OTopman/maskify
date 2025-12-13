@@ -4,8 +4,14 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
-## v3.3.2 - 2025-12-05
+## v3.4.0 - 2025-12-13
+### 🚀 New Features
+- **Database Integrations**: Added native middleware and plugins for major ORMs to mask data at the database layer:
+    - **Prisma**: Added `$extends` extension for masking read operations (`findUnique`, `findMany`).
+    - **TypeORM**: Added `Subscriber` to automatically mask entities loaded with `@Mask` decorators.
+    - **Mongoose**: Added schema plugin with `.mask()` helper and optional `toJSON` automation.
 
+## v3.3.2 - 2025-12-05
 ### 📚 Documentation
 - Rewrote `README.md` to include comprehensive guides for Smart Compiler, Zero-Config Auto-Masking, Middleware, and Advanced Strategies.
 
