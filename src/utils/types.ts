@@ -66,7 +66,7 @@ export interface MiddlewareOptions {
    * Each field can be a string (uses global maskOptions)
    * or an object with custom per-field options.
    */
-  fields: (string | { name: string; options?: MaskOptions })[];
+  fields?: (string | { name: string; options?: MaskOptions })[];
 
   /**
    * Global mask options applied if field-specific options are not provided.
