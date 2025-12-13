@@ -71,5 +71,5 @@ export interface MiddlewareOptions {
   /**
    * Global mask options applied if field-specific options are not provided.
    */
-  maskOptions?: MaskOptions;
+  maskOptions?: AutoMaskOptions;
 }
