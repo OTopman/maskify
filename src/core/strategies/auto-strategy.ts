@@ -1,12 +1,7 @@
-import { MaskifyCore } from '../maskify';
-import { Detectors, MaskableType, MaskOptions } from '../../utils';
+import { AutoMaskOptions, Detectors, MaskableType } from '../../utils';
 import { getCachedRegex } from '../../utils/cache';
+import { MaskifyCore } from '../maskify';
 import { deepVisit } from './traverser';
-
-export interface AutoMaskOptions extends MaskOptions {
-  sensitiveKeys?: string[];
-  autoDetectTypes?: MaskableType[];
-}
 
 const DEFAULT_SENSITIVE_KEYS = [
   'password',

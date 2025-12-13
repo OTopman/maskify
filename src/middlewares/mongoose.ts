@@ -3,24 +3,33 @@ import { MiddlewareOptions } from '../utils';
 
 export function mongoose(schema: any, options: MiddlewareOptions) {
   const { fields, maskOptions: globalOptions } = options;
+  let maskSchema: Record<string, any> | null = null;
 
-  const maskSchema = Object.fromEntries(
-    fields.map((f) => {
-      if (typeof f === 'string') return [f, globalOptions || {}];
-      return [f.name, { ...(globalOptions || {}), ...(f.options || {}) }];
-    })
-  );
+  if (fields && fields.length > 0) {
+    maskSchema = Object.fromEntries(
+      fields.map((f) => {
+        if (typeof f === 'string') return [f, globalOptions || {}];
+        return [f.name, { ...(globalOptions || {}), ...(f.options || {}) }];
+      })
+    );
+  }
 
   // 1. Add .mask() method to documents
   schema.methods.mask = function () {
     const obj = this.toObject();
-    return MaskifyCore.maskSensitiveFields(obj, maskSchema);
+    if (maskSchema) {
+      return MaskifyCore.maskSensitiveFields(obj, maskSchema);
+    }
+    return MaskifyCore.autoMask(obj, globalOptions);
   };
 
-  // 2. Automatic masking on JSON serialization (optional hook)
+  // 2. Automatic masking on JSON serialization
   schema.set('toJSON', {
     transform: (doc: any, ret: any) => {
-      return MaskifyCore.maskSensitiveFields(ret, maskSchema);
+      if (maskSchema) {
+        return MaskifyCore.maskSensitiveFields(ret, maskSchema);
+      }
+      return MaskifyCore.autoMask(ret, globalOptions);
     },
   });
 }

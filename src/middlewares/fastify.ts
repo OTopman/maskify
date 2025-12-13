@@ -4,7 +4,7 @@ import { MaskifyCore } from '../core/maskify';
 import { MiddlewareOptions } from '../utils';
 
 /**
- * Fastify plugin wrapped in `fp` to ensure the 'onSend' hook
+ * Fastify plugin wrapped in \`fp\` to ensure the 'onSend' hook
  * applies globally to all routes registered after it.
  */
 const fastifyPlugin = async (
@@ -12,14 +12,17 @@ const fastifyPlugin = async (
   options: MiddlewareOptions
 ) => {
   const { fields, maskOptions: globalOptions } = options;
+  let schema: Record<string, any> | null = null;
 
-  // Pre-calculate schema
-  const schema = Object.fromEntries(
-    fields.map((f) => {
-      if (typeof f === 'string') return [f, globalOptions || {}];
-      return [f.name, { ...(globalOptions || {}), ...(f.options || {}) }];
-    })
-  );
+  // Pre-calculate schema if fields exist
+  if (fields && fields.length > 0) {
+    schema = Object.fromEntries(
+      fields.map((f) => {
+        if (typeof f === 'string') return [f, globalOptions || {}];
+        return [f.name, { ...(globalOptions || {}), ...(f.options || {}) }];
+      })
+    );
+  }
 
   app.addHook(
     'onSend',
@@ -36,25 +39,23 @@ const fastifyPlugin = async (
         } else if (typeof payload === 'string') {
           jsonString = payload;
         } else {
-          // Already an object? (Rare in onSend, but handle it)
-          return JSON.stringify(
-            MaskifyCore.maskSensitiveFields(
-              payload as object,
-              schema,
-              undefined,
-              globalOptions
-            )
-          );
+          // Already an object?
+          if (schema) {
+            return JSON.stringify(MaskifyCore.maskSensitiveFields(payload as object, schema));
+          }
+          return JSON.stringify(MaskifyCore.autoMask(payload as object, globalOptions));
         }
 
         // 3. Parse, Mask, Stringify
         const json = JSON.parse(jsonString);
-        const masked = MaskifyCore.maskSensitiveFields(
-          json,
-          schema,
-          undefined,
-          globalOptions
-        );
+        let masked;
+        
+        if (schema) {
+          masked = MaskifyCore.maskSensitiveFields(json, schema);
+        } else {
+          masked = MaskifyCore.autoMask(json, globalOptions);
+        }
+        
         return JSON.stringify(masked);
       } catch (err) {
         // If parsing fails (e.g. HTML/Plain text), return original

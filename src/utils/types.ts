@@ -33,6 +33,14 @@ export interface MaskOptions {
   transform?: (value: string) => string;
 }
 
+export interface AutoMaskOptions extends MaskOptions {
+  /** List of keys to automatically mask (e.g. "password", "secret") */
+  sensitiveKeys?: string[];
+
+  /** List of types to automatically detect in values (e.g. "email", "ip") */
+  autoDetectTypes?: MaskableType[];
+}
+
 export type MaskSchema = Record<string, MaskOptions>;
 
 export interface MaskSchemaOptions {
@@ -58,10 +66,10 @@ export interface MiddlewareOptions {
    * Each field can be a string (uses global maskOptions)
    * or an object with custom per-field options.
    */
-  fields: (string | { name: string; options?: MaskOptions })[];
+  fields?: (string | { name: string; options?: MaskOptions })[];
 
   /**
    * Global mask options applied if field-specific options are not provided.
    */
-  maskOptions?: MaskOptions;
+  maskOptions?: AutoMaskOptions;
 }
