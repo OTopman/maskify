@@ -1,0 +1,15 @@
+{
+  "mode": "mask",
+  "fields": [
+    "email",
+    "password",
+    "token",
+    "ssn"
+  ],
+  "maskOptions": {
+    "maskChar": "*",
+    "maxAsterisks": 8,
+    "autoDetect": true
+  },
+  "disableCache": false
+}

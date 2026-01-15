@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { MaskifyCore } from '../core/maskify';
 import { MiddlewareOptions } from '../utils';
+import { GlobalConfigLoader } from '../utils/config'; // 👈 Import Loader
 
 let expressLoaded = false;
 function ensureExpressInstalled() {
@@ -15,14 +16,15 @@ function ensureExpressInstalled() {
   }
 }
 
-export function express(options: MiddlewareOptions) {
-  // Ensure Express is available
+export function express(options?: MiddlewareOptions) {
   ensureExpressInstalled();
 
-  const { fields, maskOptions: globalOptions } = options;
+  // 1. Resolve Config (Param > File > Empty)
+  const config = options || GlobalConfigLoader.load();
+  const { fields, maskOptions: globalOptions } = config;
+
   let schema: Record<string, any> | null = null;
 
-  // Build schema dynamically if fields are provided
   if (fields && fields.length > 0) {
     schema = Object.fromEntries(
       fields.map((f) => {
@@ -50,6 +52,7 @@ export function express(options: MiddlewareOptions) {
       if (schema) {
         masked = MaskifyCore.maskSensitiveFields(data, schema);
       } else {
+        // Fallback to Auto-Masking if no fields defined
         masked = MaskifyCore.autoMask(data, globalOptions);
       }
 
