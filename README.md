@@ -43,6 +43,7 @@ If Maskify helps you, consider supporting the development:
 ## ⚡️ Features
 
 - ✅ **Smart Compiler:** High-performance, single-pass lexer that identifies and masks PII patterns (Email, IP, JWT, etc.) within unstructured text logs.
+- ✅ **Configuration Files:** Support for `maskify.config.js` and `.maskifyrc` with `defineConfig` support.
 - ✅ **Zero-Config Auto-Masking:** Heuristic analysis to automatically detect and mask sensitive data in objects without manual schema definition.
 - ✅ **Deep Masking:** Mask strings, objects, arrays, and nested fields with zero mutation (non-destructive).
 - ✅ **Database Integrations:** Native support for **Prisma**, **TypeORM**, and **Mongoose** to mask data at the database layer.
@@ -105,7 +106,25 @@ const dirtyData = {
 const clean = Maskify.autoMask(dirtyData);
 ```
 
-### 3\. Class Decorators (TypeScript)
+### 3. Configuration File (New!) 🆕
+
+Define your masking rules once in `maskify.config.js` and reuse them across your App, CLI, and Middlewares.
+
+```javascript
+// maskify.config.js
+const { defineConfig } = require('maskify-ts');
+
+module.exports = defineConfig({
+  mode: 'mask', // or 'allow'
+  fields: ['email', 'password', 'token'],
+  maskOptions: {
+    maskChar: '*',
+    autoDetect: true
+  }
+});
+```
+
+### 4. Class Decorators (TypeScript)
 
 Ideal for NestJS, TypeORM, or standardized DTOs.
 
@@ -136,7 +155,7 @@ console.log(masked);
 // UserDTO { email: 'jo**@d**.com', phone: '+123#######90', username: 'johndoe' }
 ```
 
-### 4\. Deterministic Masking (Analytics)
+### 5. Deterministic Masking (Analytics)
 
 Generate consistent hashes to track usage without storing PII.
 
@@ -150,7 +169,7 @@ const hash2 = Maskify.deterministic(email, opts);
 console.log(hash1 === hash2); // true (e.g., "a3f12b9...")
 ```
 
-### 5\. 🗄️ Database Integrations
+### 6. 🗄️ Database Integrations
 
 Automatically mask data at the database layer before it reaches your application logic.
 

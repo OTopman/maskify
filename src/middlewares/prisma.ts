@@ -1,8 +1,12 @@
 import { MaskifyCore } from '../core/maskify';
 import { MiddlewareOptions } from '../utils';
+import { GlobalConfigLoader } from '../utils/config';
 
-export function prisma(options: MiddlewareOptions) {
-  const { fields, maskOptions: globalOptions } = options;
+export function prisma(options?: MiddlewareOptions) {
+  // 1. Resolve Config
+  const config = options || GlobalConfigLoader.load();
+  const { fields, maskOptions: globalOptions } = config;
+
   let schema: Record<string, any> | null = null;
 
   if (fields && fields.length > 0) {
@@ -20,7 +24,6 @@ export function prisma(options: MiddlewareOptions) {
       $allModels: {
         async $allOperations({ model, operation, args, query }: any) {
           const result = await query(args);
-          // Mask on read operations
           if (
             ['findUnique', 'findFirst', 'findMany', 'queryRaw'].includes(
               operation

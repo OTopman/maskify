@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { createInterface } from 'readline';
-import { registerDefaults } from '../core/bootstrap'; // 1. Import bootstrap
+import { registerDefaults } from '../core/bootstrap';
 import { MaskifyCore } from '../core/maskify';
-import { GlobalConfigLoader, MaskOptions } from '../utils';
+import { GlobalConfigLoader, MaskOptions, MiddlewareField } from '../utils';
 
 // Registry initialization
 registerDefaults();
@@ -15,7 +15,7 @@ function parseArgs() {
 
   // 2. Default options
   const options: {
-    fields: string[];
+    fields: MiddlewareField[]; // 👈 FIX: Updated type to accept objects
     maskChar: string;
     mode: 'mask' | 'allow';
     help: boolean;
@@ -32,6 +32,7 @@ function parseArgs() {
     switch (arg) {
       case '--fields':
       case '-f':
+        // CLI args are always strings, which is valid for MiddlewareField[]
         options.fields = args[++i]?.split(',').map((s) => s.trim()) || [];
         break;
       case '--char':
@@ -77,21 +78,20 @@ async function main() {
     process.exit(0);
   }
 
-  if (options.fields.length === 0 && options.mode === 'mask') {
-    console.error(
-      'Error: No fields specified. Use -f or create a config file.'
-    );
-    process.exit(1);
-  }
-
-  // This object represents the "Effective Global Configuration" for this run
+  // CLI defaults for schema generation
   const maskOpts: MaskOptions = {
     maskChar: options.maskChar,
     autoDetect: true,
   };
 
+  // 👈 FIX: Handle both string and object field definitions
   const schema = Object.fromEntries(
-    options.fields.map((field) => [field, maskOpts])
+    options.fields.map((field) => {
+      if (typeof field === 'string') {
+        return [field, maskOpts];
+      }
+      return [field.name, { ...maskOpts, ...field.options }];
+    })
   );
 
   const rl = createInterface({
@@ -105,6 +105,16 @@ async function main() {
     try {
       const json = JSON.parse(line);
 
+      // If no fields provided in CLI or Config, we can default to Auto-Masking
+      // But based on your previous logic, we check schema mode.
+      // If schema is empty and mode is mask, it might mean "mask nothing" or "error".
+      // Assuming users might want Auto-Mask if no fields are explicitly passed:
+      if (Object.keys(schema).length === 0 && options.fields.length === 0) {
+        const masked = MaskifyCore.autoMask(json, maskOpts);
+        console.log(JSON.stringify(masked));
+        continue;
+      }
+
       const masked = MaskifyCore.maskSensitiveFields(
         json,
         schema,
@@ -117,7 +127,7 @@ async function main() {
 
       console.log(JSON.stringify(masked));
     } catch (e) {
-      // If valid JSON cannot be parsed, output the raw line (standard unix tool behavior)
+      // If valid JSON cannot be parsed, output the raw line
       console.log(line);
     }
   }

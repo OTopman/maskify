@@ -1,13 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { MaskOptions } from './types';
+import { MaskOptions, MiddlewareOptions } from './types';
 
-export interface GlobalConfig {
-  /** Global mask options applied to all mask calls */
-  maskOptions?: MaskOptions;
-  /** Default fields to mask (used by CLI/Middleware) */
-  fields?: string[];
-
+// Extend MiddlewareOptions to include global-specific settings
+export interface GlobalConfig extends MiddlewareOptions {
   /** Disable internal caching for paths and regexes (saves memory, costs CPU) */
   disableCache?: boolean;
 
@@ -17,10 +13,18 @@ export interface GlobalConfig {
 
 const CONFIG_FILES = [
   'maskify.config.js',
+  'maskify.config.ts', // Added TS support (requires ts-node usually, but useful for definition)
   '.maskifyrc.js',
   '.maskifyrc.json',
   '.maskifyrc',
 ];
+
+/**
+ * Type-safe helper to define Maskify configuration.
+ */
+export function defineConfig(config: GlobalConfig): GlobalConfig {
+  return config;
+}
 
 class ConfigLoader {
   private static config: GlobalConfig | null = null;
@@ -35,7 +39,7 @@ class ConfigLoader {
       for (const file of CONFIG_FILES) {
         const filePath = path.join(cwd, file);
         if (fs.existsSync(filePath)) {
-          if (file.endsWith('.js')) {
+          if (file.endsWith('.js') || file.endsWith('.ts')) {
             // eslint-disable-next-line @typescript-eslint/no-var-requires
             const loaded = require(filePath);
             this.config = loaded.default || loaded;
@@ -58,16 +62,13 @@ class ConfigLoader {
         }
       }
     } catch (error) {
-      // Fail silently and use defaults if FS access fails (e.g. strict environments)
+      // Fail silently and use defaults
     }
 
     this.config = {};
     return this.config!;
   }
 
-  /**
-   * Force reload (useful for tests)
-   */
   static reload() {
     this.config = null;
     return this.load();

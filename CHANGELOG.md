@@ -4,6 +4,18 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+
+
+## v3.5.0 - 2026-01-15
+### 🚀 New Features
+- **Configuration Autoloading**: Maskify now automatically searches for and loads configuration from `maskify.config.js`, `.maskifyrc`, or `package.json` if no options are passed to middlewares or CLI.
+- **Type-Safe Config**: Added `defineConfig` helper to provide IntelliSense and type safety for `maskify.config.js` files.
+- **Zero-Config Middleware**: All middlewares (Express, Fastify, Prisma, TypeORM, Mongoose) can now be initialized without arguments, automatically picking up the global configuration.
+- **Enhanced CLI**: The CLI tool now supports object-based field definitions (via config file) and automatically loads your project's configuration.
+
+### 🛠 Improvements
+- **Refactored CLI**: Updated CLI argument parsing to handle complex field schemas defined in configuration files.
+
 ## v3.4.0 - 2025-12-13
 ### 🚀 New Features
 - **Database Integrations**: Added native middleware and plugins for major ORMs to mask data at the database layer:
