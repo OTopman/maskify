@@ -68,7 +68,7 @@ describe('New Masking Features', () => {
   describe('Deterministic Masking', () => {
     it('should produce the same mask for the same input', () => {
       const email = 'unique@user.com';
-      const opts = { secret: 'my-secret-key' };
+      const opts = { secret: 'my-secret-key-1234' };
 
       const mask1 = Maskify.deterministic(email, opts);
       const mask2 = Maskify.deterministic(email, opts);
@@ -79,8 +79,8 @@ describe('New Masking Features', () => {
 
     it('should produce different masks for different secrets', () => {
       const val = 'data';
-      const mask1 = Maskify.deterministic(val, { secret: 'key-A' });
-      const mask2 = Maskify.deterministic(val, { secret: 'key-B' });
+      const mask1 = Maskify.deterministic(val, { secret: 'key-A-very-long-123' });
+      const mask2 = Maskify.deterministic(val, { secret: 'key-B-very-long-123' });
 
       expect(mask1).not.toBe(mask2);
     });

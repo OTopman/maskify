@@ -1,29 +1,44 @@
 import 'reflect-metadata';
 
 import type { Application as ExpressApp } from 'express';
-import { FastifyInstance } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import { registerDefaults } from './core/bootstrap';
 import { SmartMasker } from './core/compiler';
 import { MaskifyCore } from './core/maskify';
 import { maskDeterministic } from './maskers/deterministic';
 import { middlewares as _middlewares } from './middlewares';
-import { AutoMaskOptions, MaskOptions, MiddlewareOptions } from './utils';
+import type { AutoMaskOptions, MaskOptions, MiddlewareOptions } from './utils';
+import { MASK_METADATA_KEY } from './decorators/mask';
 
-// Initialize defaults
+// Populate the process-wide registry with the built-in maskers.
 registerDefaults();
 
 export { Mask } from './decorators';
 export {
   createMaskStream,
   MaskifyStream,
-  type MaskStreamOptions
+  type MaskStreamOptions,
 } from './stream';
-export { defineConfig } from './utils/config';
+export { defineConfig, GlobalConfigLoader } from './utils/config';
+export { MaskifyError, MaskifyConfigError, MaskifyValidationError } from './utils/errors';
+export { MaskerRegistry } from './core/registry';
 export type { AutoMaskOptions, MaskOptions, MiddlewareOptions };
 
-/**
- * Namespace for additional utilities
- */
+export type MaskifyServerType = 'express' | 'fastify';
+
+function collectMaskMetadata(instance: object): Record<string, MaskOptions> | null {
+  let proto: object | null = Object.getPrototypeOf(instance);
+  let merged: Record<string, MaskOptions> | null = null;
+  while (proto && proto !== Object.prototype) {
+    const meta = Reflect.getMetadata(MASK_METADATA_KEY, proto);
+    if (meta) {
+      merged = { ...(meta as Record<string, MaskOptions>), ...(merged || {}) };
+    }
+    proto = Object.getPrototypeOf(proto);
+  }
+  return merged;
+}
+
 export namespace Maskify {
   export const mask = MaskifyCore.mask;
   export const pattern = MaskifyCore.pattern;
@@ -33,36 +48,53 @@ export namespace Maskify {
   export const smart = SmartMasker.process;
   export const middlewares = _middlewares;
 
+  /**
+   * Returns a new instance with all `@Mask`-decorated properties replaced by
+   * their masked representation. Walks the prototype chain so decorators on
+   * base classes are respected.
+   */
   export function maskClass<T extends object>(instance: T): T {
-    const MASK_METADATA_KEY = Symbol.for('MASK_METADATA');
-    const proto = Object.getPrototypeOf(instance);
-    if (!proto) return instance;
+    if (!instance || typeof instance !== 'object') return instance;
 
-    const metadata = Reflect.getMetadata(MASK_METADATA_KEY, proto);
+    const metadata = collectMaskMetadata(instance);
     if (!metadata) return instance;
 
-    const clone = Object.assign(Object.create(proto), instance);
+    const proto = Object.getPrototypeOf(instance);
+    const clone = Object.assign(Object.create(proto || null), instance) as T;
+
     for (const key of Object.keys(metadata)) {
-      if (clone[key]) {
-        clone[key] = Maskify.mask(clone[key], metadata[key]);
+      const current = (clone as any)[key];
+      if (current !== undefined && current !== null) {
+        (clone as any)[key] = MaskifyCore.mask(String(current), metadata[key]);
       }
     }
 
     return clone;
   }
 
-  export const use = (
-    app: any | FastifyInstance | ExpressApp,
+  export function use(
+    app: ExpressApp,
     options: MiddlewareOptions,
-    type: 'express' | 'fastify' = 'express'
-  ) => {
+    type?: 'express',
+  ): void;
+  export function use(
+    app: FastifyInstance,
+    options: MiddlewareOptions,
+    type: 'fastify',
+  ): void;
+  export function use(
+    app: ExpressApp | FastifyInstance,
+    options: MiddlewareOptions,
+    type: MaskifyServerType = 'express',
+  ): void {
     if (type === 'express') {
-      const mw = middlewares.express(options);
-      app.use(mw);
-    } else if (type === 'fastify') {
-      app.register(middlewares.fastify, options);
-    } else {
-      throw new Error(`Unimplemented server type: ${type}`);
+      (app as ExpressApp).use(middlewares.express(options));
+      return;
     }
-  };
+    if (type === 'fastify') {
+      (app as FastifyInstance).register(middlewares.fastify, options);
+      return;
+    }
+    throw new Error(`Unsupported server type: ${type as string}`);
+  }
 }

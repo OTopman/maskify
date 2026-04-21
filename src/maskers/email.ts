@@ -1,5 +1,6 @@
 import { MaskOptions } from '../utils';
 import { DEFAULT_MASK_OPTIONS } from '../utils/defaults';
+import { validateInput } from '../utils/validator';
 
 /**
  * Masks an email address while preserving its recognisable structure.
@@ -15,26 +16,43 @@ export function maskEmail(
   email: string,
   options: Pick<
     MaskOptions,
-    'maxAsterisks' | 'maskChar' | 'visibleStart' | 'visibleEnd'
+    | 'maxAsterisks'
+    | 'maskChar'
+    | 'visibleStart'
+    | 'visibleEnd'
+    | 'strict'
+    | 'maxLength'
+    | 'allowEmpty'
   > = {}
 ): string {
-  if (!email || typeof email !== 'string' || !email.includes('@')) {
-    return email || '';
+  const validation = validateInput(email, {
+    strict: options.strict,
+    maxLength: options.maxLength,
+    allowEmpty: options.allowEmpty,
+  });
+  if (!validation.valid) {
+    // Never return raw input on validation failure — that would leak PII
+    // when the caller passed something unexpected (e.g. a non-string).
+    return '';
   }
+  const normalized = validation.sanitized ?? '';
+  if (!normalized) return '';
+  if (!normalized.includes('@')) return normalized;
 
   const config = {
     ...DEFAULT_MASK_OPTIONS,
+    visibleStart: 1,
     ...options,
   };
 
   const {
     maxAsterisks = 4,
-    visibleStart = 0,
+    visibleStart = 1,
     visibleEnd = 0,
     maskChar = '*',
   } = config;
 
-  const [localPart, domainPart] = email.split('@');
+  const [localPart, domainPart] = normalized.split('@');
   if (!localPart || !domainPart) return email;
 
   const [domainName, ...rest] = domainPart.split('.');
@@ -51,7 +69,7 @@ export function maskEmail(
   const maskedLocal = `${start}${maskChar.repeat(maskedLocalCount)}`;
 
   // --- Mask domain name ---
-  const safeVisibleEnd = Math.min(visibleEnd, domainName.length - 1);
+  const safeVisibleEnd = Math.max(1, Math.min(visibleEnd || 1, domainName.length - 1));
   const maskedDomainCount = Math.min(
     3,
     Math.max(domainName.length - safeVisibleEnd, 1)

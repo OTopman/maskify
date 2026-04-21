@@ -10,6 +10,15 @@ export type MaskableType =
   | 'url';
 
 export interface MaskOptions {
+  /** Throw typed errors for invalid input */
+  strict?: boolean;
+
+  /** Maximum input length before truncation/failure */
+  maxLength?: number;
+
+  /** Allow empty string values */
+  allowEmpty?: boolean;
+
   /** Number of visible characters at the start */
   visibleStart?: number;
 
@@ -31,6 +40,12 @@ export interface MaskOptions {
 
   /** Custom transformation function (overrides other options) */
   transform?: (value: string) => string;
+
+  /**
+   * Secret used by deterministic masking.
+   * Prefer `Maskify.deterministic()` for explicit usage.
+   */
+  secret?: string;
 }
 
 export interface AutoMaskOptions extends MaskOptions {
@@ -40,8 +55,6 @@ export interface AutoMaskOptions extends MaskOptions {
   /** List of types to automatically detect in values (e.g. "email", "ip") */
   autoDetectTypes?: MaskableType[];
 }
-
-export type MaskSchema = Record<string, MaskOptions>;
 
 export interface MaskSchemaOptions {
   /** * 'mask' (default): Only masks fields defined in the schema.

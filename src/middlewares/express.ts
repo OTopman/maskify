@@ -1,17 +1,18 @@
 import type { NextFunction, Request, Response } from 'express';
 import { MaskifyCore } from '../core/maskify';
 import { MiddlewareOptions } from '../utils';
-import { GlobalConfigLoader } from '../utils/config'; // 👈 Import Loader
+import { GlobalConfigLoader } from '../utils/config';
+import { buildSchemaFromFields } from '../utils/schema-builder';
 
-let expressLoaded = false;
+let expressVerified = false;
 function ensureExpressInstalled() {
-  if (expressLoaded) return;
+  if (expressVerified) return;
   try {
     require.resolve('express');
-    expressLoaded = true;
+    expressVerified = true;
   } catch {
     throw new Error(
-      'Express is required but not installed. Please run `npm install express`.'
+      'Express is required but not installed. Please run `npm install express`.',
     );
   }
 }
@@ -19,42 +20,19 @@ function ensureExpressInstalled() {
 export function express(options?: MiddlewareOptions) {
   ensureExpressInstalled();
 
-  // 1. Resolve Config (Param > File > Empty)
   const config = options || GlobalConfigLoader.load();
   const { fields, maskOptions: globalOptions } = config;
+  const schema = buildSchemaFromFields(fields, globalOptions);
 
-  let schema: Record<string, any> | null = null;
-
-  if (fields && fields.length > 0) {
-    schema = Object.fromEntries(
-      fields.map((f) => {
-        if (typeof f === 'string') {
-          return [f, globalOptions || {}];
-        }
-        return [
-          f.name,
-          {
-            ...(globalOptions || {}),
-            ...(f.options || {}),
-          },
-        ];
-      })
-    );
-  }
-
-  return (_: Request, res: Response, next: NextFunction) => {
+  return (_req: Request, res: Response, next: NextFunction) => {
     const originalJson = res.json.bind(res);
 
-    res.json = (data: any) => {
+    res.json = (data: unknown) => {
       if (!data || typeof data !== 'object') return originalJson(data);
 
-      let masked;
-      if (schema) {
-        masked = MaskifyCore.maskSensitiveFields(data, schema);
-      } else {
-        // Fallback to Auto-Masking if no fields defined
-        masked = MaskifyCore.autoMask(data, globalOptions);
-      }
+      const masked = schema
+        ? MaskifyCore.maskSensitiveFields(data as object, schema)
+        : MaskifyCore.autoMask(data as object, globalOptions);
 
       return originalJson(masked);
     };

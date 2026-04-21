@@ -1,4 +1,4 @@
-import { maskDeterministic, maskGeneric, maskPattern } from '../maskers';
+import { maskGeneric, maskPattern } from '../maskers';
 import {
   AutoMaskOptions,
   Detectors,
@@ -110,8 +110,6 @@ export class MaskifyCore {
     if (masker) {
       return masker(value, opts);
     }
-    if ((opts as any).secret) return maskDeterministic(value, opts as any);
-
     return maskGeneric(value, opts);
   }
 

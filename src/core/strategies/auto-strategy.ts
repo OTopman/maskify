@@ -36,20 +36,31 @@ export function applyAutoStrategy(
   const keysList = options.sensitiveKeys || DEFAULT_SENSITIVE_KEYS;
   const detectTypes = new Set(options.autoDetectTypes || DEFAULT_DETECT_TYPES);
 
-  // Compile Regex (Optimized)
+  // Build a whole-word-ish matcher so "author" doesn't trigger on "auth"
+  // and "secretary" doesn't trigger on "secret". Separators between words
+  // may be underscore, hyphen, dot, or camelCase boundaries.
   const cacheKey = `keys:${keysList.join(',')}`;
   const keyRegex = getCachedRegex(cacheKey, () => {
     const escaped = keysList.map((k) =>
-      k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
     );
-    return new RegExp(escaped.join('|'), 'i');
+    const boundary = '(?:^|[^a-zA-Z0-9])';
+    const tail = '(?:$|[^a-zA-Z0-9])';
+    return new RegExp(
+      `${boundary}(?:${escaped.join('|')})${tail}`,
+      'i',
+    );
   });
 
-  // Use the Visitor Pattern
+  const matchesKey = (key: string) => {
+    // Split camelCase/PascalCase so "apiKey" resolves via word-boundary match.
+    const normalized = key.replace(/([a-z0-9])([A-Z])/g, '$1_$2');
+    return keyRegex.test(normalized);
+  };
+
   deepVisit(target, (key, val, parent) => {
-    // 1. Key Matching Strategy
     if (
-      keyRegex.test(key) &&
+      matchesKey(key) &&
       ['string', 'number', 'boolean'].includes(typeof val)
     ) {
       parent[key] = MaskifyCore.mask(String(val), {
@@ -59,7 +70,6 @@ export function applyAutoStrategy(
       return;
     }
 
-    // 2. Value Analysis Strategy
     if (typeof val === 'string') {
       const type = Detectors.detectType(val);
       if (detectTypes.has(type)) {

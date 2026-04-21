@@ -1,66 +1,48 @@
 /**
- * @module Patterns
- * Centralized repository for all Regular Expression patterns used across the library.
- * This ensures consistency between Detectors, Maskers, and the Smart Lexer.
+ * Pre-compiled, frozen regex patterns for PII detection.
+ *
+ * These are compiled ONCE at module load,
+ * not on every detection call. Critical for high-throughput scenarios.
  */
+export const PATTERNS = {
+  // Email: RFC 5322 simplified (practical coverage)
+  EMAIL:
+    /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z]{2,})+$/,
 
-export const RegexLib = {
-  /**
-   * Matches standard email addresses.
-   * Captures: group 1 (local), group 2 (domain).
-   */
-  EMAIL: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/,
+  // Phone: E.164 + common formats
+  PHONE: /^\+?[\d\s\-().]{7,}$/,
 
-  /**
-   * Matches IPv4 addresses.
-   * Checks for 4 groups of 1-3 digits separated by dots.
-   */
-  IPV4: /\b(?:\d{1,3}\.){3}\d{1,3}\b/,
+  // Credit Card: 13-19 digits, optional spaces/dashes
+  CARD: /^(?:\d{4}[\s-]?){3,4}\d{1,4}$/,
 
-  /**
-   * Matches IPv6 addresses (simplified).
-   * Checks for hex groups separated by colons.
-   */
-  IPV6: /([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}/,
+  // IPv4
+  IPV4: /^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/,
 
-  /**
-   * Matches Credit Card numbers (13-19 digits).
-   * supports space and dash separators.
-   */
-  CARD: /\b(?:\d[ -]*?){13,19}\b/,
+  // IPv6 (simplified)
+  IPV6: /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/,
 
-  /**
-   * Matches International Phone Numbers.
-   * Supports: +1-555-555-5555, (555) 555-5555
-   */
-  PHONE:
-    /\b(?:\+?(\d{1,3}))?[-. (]*(\d{3})[-. )]*(\d{3})[-. ]*(\d{4})(?: *x(\d+))?\b/,
+  // JWT: header.payload.signature (header must be base64url "eyJ..." prefix;
+  // payload/signature are base64url but can't always be assumed to start with "eyJ")
+  JWT: /^eyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/,
 
-  /**
-   * Matches valid characters for a Name (Alphabets, space, dot, apostrophe, dash).
-   * Used in combination with a space check to avoid matching single words.
-   */
-  NAME_CHARS: /^[A-Za-z\s.'-]+$/,
+  // URL with query params
+  URL: /^https?:\/\/[^\s]+$/,
 
-  /**
-   * Matches the general structure of an address (starting with digits).
-   * e.g. "123 Main St"
-   */
-  ADDRESS_START: /\d+\s+[\w\s,.-]+/,
+  // Address start (street number)
+  ADDRESS_START: /^\d+[\s-]/,
 
-  /**
-   * Matches common street suffixes to reduce false positives for addresses.
-   */
-  ADDRESS_SUFFIX: /(road|street|st|rd|ave|lane|close|way|boulevard|crescent)/i,
+  // Address suffix (Street, Ave, etc.)
+  ADDRESS_SUFFIX:
+    /\b(Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Place|Pl|Way|Terrace|Terr)\b/i,
 
-  /**
-   * Matches JSON Web Tokens (JWT).
-   * Header.Payload.Signature
-   */
-  JWT: /ey[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.[A-Za-z0-9-_.+/=]+/,
+  // Name characters (letters, spaces, hyphens, apostrophes)
+  NAME_CHARS: /^[A-Za-z\s.\-']+$/,
 
-  /**
-   * Matches standard URLs with protocol (http/https).
-   */
-  URL: /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)/,
-};
+  // Sensitive field names — anchored to the *whole* key so "author" doesn't
+  // fall into "auth" and "secretary" doesn't fall into "secret".
+  SENSITIVE_KEYS:
+    /^(?:password|passwd|pwd|secret|token|api[_-]?key|auth|authorization|credential|ssn|sin|nin|credit[_-]?card|card[_-]?number|cvv|cvc|pin|otp|access[_-]?token|refresh[_-]?token)$/i,
+} as const;
+
+// Freeze to prevent runtime modification
+Object.freeze(PATTERNS);
