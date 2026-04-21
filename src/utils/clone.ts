@@ -1,44 +1,61 @@
 /**
- * Deep clone an object while handling circular references and preserving types.
- * Prefers 'structuredClone' if available (Node 17+).
+ * Deep-clones a value preserving cycles. Prefers the native `structuredClone`
+ * when available; otherwise falls back to a manual walk that handles Dates,
+ * arrays, and plain objects. Functions are returned by reference since they
+ * can't be structurally cloned.
  */
-export function safeClone<T>(obj: T, map = new WeakMap()): T {
+export function safeClone<T>(obj: T, map = new WeakMap<object, unknown>()): T {
   if (obj === null || typeof obj !== 'object') return obj;
-  if (typeof obj === 'function') return obj; // Preserve functions
+  if (typeof obj === 'function') return obj;
 
-  // 1. Return the cached clone if we've seen this object reference before
-  if (map.has(obj)) return map.get(obj);
+  if (map.has(obj as object)) return map.get(obj as object) as T;
 
-  // 2. Use native structuredClone if available (fastest & robust)
   if (typeof structuredClone === 'function') {
     try {
       return structuredClone(obj);
-    } catch (e) {
-      // Fallback if structuredClone fails (e.g., on functions or non-clonable types)
+    } catch {
+      // Objects containing functions, class instances with getters, or
+      // values with ORM-specific symbols can fail structuredClone. Fall
+      // through to the manual walk below.
     }
   }
 
-  // 3. Handle Arrays
   if (Array.isArray(obj)) {
-    const arr: any[] = [];
-    map.set(obj, arr); // Set map BEFORE recursion
-    obj.forEach((v, i) => (arr[i] = safeClone(v, map)));
+    const arr: unknown[] = [];
+    map.set(obj as object, arr);
+    for (let i = 0; i < obj.length; i++) {
+      arr[i] = safeClone((obj as unknown[])[i], map);
+    }
     return arr as unknown as T;
   }
 
-  // 4. Handle Dates
   if (obj instanceof Date) {
     return new Date(obj.getTime()) as unknown as T;
   }
 
-  // 5. Handle standard Objects
-  const clone = {} as T;
-  map.set(obj, clone); // Set map BEFORE recursion
-
-  for (const key in obj) {
-    if (Object.prototype.hasOwnProperty.call(obj, key)) {
-      (clone as any)[key] = safeClone((obj as any)[key], map);
+  if (obj instanceof Map) {
+    const cloned = new Map();
+    map.set(obj as object, cloned);
+    for (const [k, v] of obj.entries()) {
+      cloned.set(safeClone(k, map), safeClone(v, map));
     }
+    return cloned as unknown as T;
+  }
+
+  if (obj instanceof Set) {
+    const cloned = new Set();
+    map.set(obj as object, cloned);
+    for (const v of obj.values()) {
+      cloned.add(safeClone(v, map));
+    }
+    return cloned as unknown as T;
+  }
+
+  const clone = {} as T;
+  map.set(obj as object, clone as object);
+
+  for (const key of Object.keys(obj as object)) {
+    (clone as any)[key] = safeClone((obj as any)[key], map);
   }
 
   return clone;

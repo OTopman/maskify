@@ -1,37 +1,74 @@
+import { MaskifyCore } from '../core/maskify';
 import { applyAutoStrategy } from '../core/strategies/auto-strategy';
-import { Maskify } from '../index';
-import { MiddlewareOptions } from '../utils';
+import { MASK_METADATA_KEY } from '../decorators/mask';
+import { MaskOptions, MiddlewareField, MiddlewareOptions } from '../utils';
+import { safeClone } from '../utils/clone';
 import { GlobalConfigLoader } from '../utils/config';
+import { buildSchemaFromFields } from '../utils/schema-builder';
 
+/**
+ * TypeORM EntitySubscriber that masks entities on serialization only.
+ *
+ * Mutating loaded entities in-place would cause TypeORM's UnitOfWork to
+ * persist masked values on the next save. Instead, this subscriber installs
+ * a `toJSON()` override on the loaded entity so HTTP responses and
+ * `JSON.stringify()` produce masked output while the in-memory entity
+ * remains writable.
+ */
 export class TypeORMSubscriber {
-  private options: MiddlewareOptions;
+  private readonly options: MiddlewareOptions;
+  private readonly schema: Record<string, MaskOptions> | null;
 
   constructor(options?: MiddlewareOptions) {
-    // 1. Resolve Config
     this.options = options || GlobalConfigLoader.load();
+    this.schema = buildSchemaFromFields(
+      this.options.fields as MiddlewareField[] | undefined,
+      this.options.maskOptions,
+    );
   }
 
-  afterLoad(entity: any) {
-    if (!entity) return;
+  afterLoad(entity: any): void {
+    if (!entity || typeof entity !== 'object') return;
 
-    // A. Decorator Strategy
-    const MASK_METADATA_KEY = Symbol.for('MASK_METADATA');
     const proto = Object.getPrototypeOf(entity);
-    if (proto) {
-      const metadata = Reflect.getMetadata(MASK_METADATA_KEY, proto);
-      if (metadata) {
-        for (const key of Object.keys(metadata)) {
-          if (entity[key]) {
-            entity[key] = Maskify.mask(entity[key], metadata[key]);
+    const decoratorMeta = proto
+      ? Reflect.getMetadata(MASK_METADATA_KEY, proto)
+      : null;
+
+    const schema = this.schema;
+    const maskOptions = this.options.maskOptions;
+    const originalToJSON =
+      typeof entity.toJSON === 'function' ? entity.toJSON.bind(entity) : null;
+
+    Object.defineProperty(entity, 'toJSON', {
+      configurable: true,
+      writable: true,
+      enumerable: false,
+      value: function toJSON() {
+        const source = originalToJSON ? originalToJSON() : { ...this };
+        const clone = safeClone(source);
+
+        if (decoratorMeta) {
+          for (const key of Object.keys(decoratorMeta)) {
+            const value = (clone as any)[key];
+            if (value !== undefined && value !== null) {
+              (clone as any)[key] = MaskifyCore.mask(
+                String(value),
+                decoratorMeta[key],
+              );
+            }
           }
         }
-      }
-    }
 
-    // B. Auto-Mask Strategy
-    if (!this.options.fields || this.options.fields.length === 0) {
-      applyAutoStrategy(entity, this.options.maskOptions);
-    }
+        if (schema) {
+          return MaskifyCore.maskSensitiveFields(clone, schema);
+        }
+        if (!decoratorMeta) {
+          applyAutoStrategy(clone, maskOptions);
+        }
+        return clone;
+      },
+    });
   }
 }
 

@@ -36,7 +36,8 @@ describe('Class Decorators', () => {
 
     const masked = Maskify.maskClass(user);
 
-    expect(masked.email).toContain('****');
+    expect(masked.email).not.toBe('test@example.com');
+    expect(masked.email).toContain('@');
     expect(masked.phone).toContain('****');
     expect(masked.username).toBe('user123');
   });

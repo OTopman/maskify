@@ -1,5 +1,3 @@
-import { RegexLib } from '../patterns/definitions';
-
 /**
  * Token types supported by the lexer.
  */
@@ -24,11 +22,19 @@ export interface TokenPattern {
  * to prevent partial matches.
  */
 export const PATTERNS: TokenPattern[] = [
-  { type: TokenType.JWT, regex: RegexLib.JWT },
-  { type: TokenType.URL, regex: RegexLib.URL },
-  { type: TokenType.EMAIL, regex: RegexLib.EMAIL },
-  { type: TokenType.IP, regex: RegexLib.IPV4 },
-  { type: TokenType.IP, regex: RegexLib.IPV6 }, // Add IPv6 support to lexer!
-  { type: TokenType.CARD, regex: RegexLib.CARD },
-  { type: TokenType.PHONE, regex: RegexLib.PHONE },
+  { type: TokenType.JWT, regex: /\beyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\b/ },
+  { type: TokenType.URL, regex: /\bhttps?:\/\/[^\s]+/ },
+  {
+    type: TokenType.EMAIL,
+    regex:
+      /\b[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z]{2,})+\b/,
+  },
+  {
+    type: TokenType.IP,
+    regex:
+      /\b(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/,
+  },
+  { type: TokenType.IP, regex: /\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b/ },
+  { type: TokenType.CARD, regex: /\b(?:\d{4}[\s-]?){3,4}\d{1,4}\b/ },
+  { type: TokenType.PHONE, regex: /\+?\d[\d()\-\s]{6,}\d/ },
 ];

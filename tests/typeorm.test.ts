@@ -23,15 +23,38 @@ describe('TypeORM Middleware', () => {
     }
   }
 
-  it('should mask entity in-place on afterLoad', () => {
+  it('masks decorated fields on JSON serialization without mutating the entity', () => {
     const subscriber = Maskify.middlewares.typeorm();
     const entity = new UserEntity('user@test.com', 'John Doe');
 
-    // Simulate TypeORM hook
     subscriber.afterLoad(entity);
 
-    // Expect default masking (****@***.com)
-    expect(entity.email).toContain('****');
+    // Entity in memory is still the original — protects TypeORM's change tracking
+    // from persisting masked data on subsequent saves.
+    expect(entity.email).toBe('user@test.com');
+
+    const serialized = JSON.parse(JSON.stringify(entity));
+    expect(serialized.email).not.toBe('user@test.com');
+    expect(serialized.email).toContain('@');
+    expect(serialized.name).toBe('John Doe');
+  });
+
+  it('respects schema-based field config on serialization', () => {
+    const subscriber = Maskify.middlewares.typeorm({
+      fields: [{ name: 'name', options: { type: 'name' } }],
+    });
+    const entity = new UserEntity('user@test.com', 'John Doe');
+
+    subscriber.afterLoad(entity);
+
+    const serialized = JSON.parse(JSON.stringify(entity));
     expect(entity.name).toBe('John Doe');
+    expect(serialized.name).not.toBe('John Doe');
+  });
+
+  it('no-ops on null or non-object entities', () => {
+    const subscriber = Maskify.middlewares.typeorm();
+    expect(() => subscriber.afterLoad(null)).not.toThrow();
+    expect(() => subscriber.afterLoad(undefined)).not.toThrow();
   });
 });

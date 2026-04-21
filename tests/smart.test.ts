@@ -15,8 +15,7 @@ describe('Smart Compiler (Maskify.smart)', () => {
     const log = 'User john.doe@example.com logged in successfully.';
     const result = Maskify.smart(log);
 
-    // Default email mask (visibleStart: 0) -> ****@***.com
-    expect(result).toBe('User ****@***.com logged in successfully.');
+    expect(result).toBe('User j****@e***.com logged in successfully.');
   });
 
   it('should mask IPv4 addresses in logs', () => {
@@ -62,7 +61,7 @@ describe('Smart Compiler (Maskify.smart)', () => {
 
     const result = Maskify.smart(log);
 
-    expect(result).toContain('****@***.com'); // Email
+    expect(result).toContain('a****@t***.com'); // Email
     expect(result).toContain('10.0.0.***'); // IP
     expect(result).toContain('eyJh.**********.**********'); // JWT
   });

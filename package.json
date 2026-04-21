@@ -1,29 +1,91 @@
 {
   "name": "maskify-ts",
-  "version": "3.5.0",
-  "description": "Advanced data masking utility for Node.js — safely mask emails, phones, cards, and nested object fields with wildcard support.",
-  "main": "dist/src/index.js",
-  "types": "dist/src/index.d.ts",
-  "module": "dist/src/index.esm.js",
-  "funding": {
-    "type": "individual",
-    "url": "https://buymeacoffee.com/maskify"
+  "version": "4.0.0",
+  "description": "Production-grade data masking for Node.js — GDPR/HIPAA compliant, type-safe, high-performance",
+  "type": "commonjs",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/cjs/index.js"
+    },
+    "./stream": {
+      "types": "./dist/types/stream/index.d.ts",
+      "import": "./dist/esm/stream/index.js",
+      "require": "./dist/cjs/stream/index.js"
+    },
+    "./middlewares/express": {
+      "types": "./dist/types/middlewares/express.d.ts",
+      "import": "./dist/esm/middlewares/express.js",
+      "require": "./dist/cjs/middlewares/express.js"
+    },
+    "./middlewares/fastify": {
+      "types": "./dist/types/middlewares/fastify.d.ts",
+      "import": "./dist/esm/middlewares/fastify.js",
+      "require": "./dist/cjs/middlewares/fastify.js"
+    },
+    "./middlewares/mongoose": {
+      "types": "./dist/types/middlewares/mongoose.d.ts",
+      "import": "./dist/esm/middlewares/mongoose.js",
+      "require": "./dist/cjs/middlewares/mongoose.js"
+    },
+    "./middlewares/prisma": {
+      "types": "./dist/types/middlewares/prisma.d.ts",
+      "import": "./dist/esm/middlewares/prisma.js",
+      "require": "./dist/cjs/middlewares/prisma.js"
+    },
+    "./middlewares/typeorm": {
+      "types": "./dist/types/middlewares/typeorm.d.ts",
+      "import": "./dist/esm/middlewares/typeorm.js",
+      "require": "./dist/cjs/middlewares/typeorm.js"
+    },
+    "./decorators/mask": {
+      "types": "./dist/types/decorators/mask.d.ts",
+      "import": "./dist/esm/decorators/mask.js",
+      "require": "./dist/cjs/decorators/mask.js"
+    },
+    "./utils/paths": {
+      "types": "./dist/types/utils/paths.d.ts",
+      "import": "./dist/esm/utils/paths.js",
+      "require": "./dist/cjs/utils/paths.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md",
+    "MIGRATION.md"
   ],
   "scripts": {
-    "pretest": "npm run build",
+    "prebuild": "rimraf dist",
+    "build": "npm run build:esm && npm run build:cjs && npm run build:types && npm run build:cli",
+    "build:esm": "tsc -p tsconfig.build.json --module esnext --outDir dist/esm",
+    "build:cjs": "tsc -p tsconfig.build.json --module commonjs --outDir dist/cjs",
+    "build:types": "tsc -p tsconfig.build.json --emitDeclarationOnly --outDir dist/types",
+    "build:cli": "chmod +x dist/cjs/cli/index.js 2>/dev/null || true",
     "test": "jest",
     "test:coverage": "jest --coverage",
+    "test:watch": "jest --watch",
+    "bench": "ts-node tests/benchmarks/masking.bench.ts",
+    "lint": "eslint src tests",
+    "lint:fix": "eslint src tests --fix",
+    "typecheck": "tsc --noEmit",
     "prepare": "npm run build",
-    "prebuild": "rimraf dist",
-    "build": "tsc -p tsconfig.json",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run test:coverage && npm run lint"
   },
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/OTopman/maskify.git"
+  },
+  "funding": {
+    "type": "individual",
+    "url": "https://buymeacoffee.com/maskify"
   },
   "keywords": [
     "mask",
@@ -41,39 +103,77 @@
     "phone-mask",
     "pii",
     "gdpr",
+    "hipaa",
+    "pci-dss",
     "nodejs",
     "typescript",
-    "javascript",
     "utility",
     "maskify"
   ],
-  "author": "Temitope Okunlola<okunlolatopman14@gmail.com>",
+  "author": "Temitope Okunlola <okunlolatopman14@gmail.com>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/OTopman/maskify/issues"
   },
-  "bin": {
-    "maskify": "dist/src/cli/index.js"
-  },
   "homepage": "https://github.com/OTopman/maskify#readme",
+  "bin": {
+    "maskify": "./dist/cjs/cli/index.js"
+  },
   "peerDependencies": {
-    "@types/express": "^5.0.3",
-    "express": "^5.1.0",
-    "fastify": "^5.6.2",
-    "fastify-plugin": "^5.1.0"
+    "@types/express": "^5.0.0",
+    "express": "^4.18.0 || ^5.0.0",
+    "fastify": "^4.0.0 || ^5.0.0",
+    "fastify-plugin": "^4.0.0 || ^5.0.0",
+    "reflect-metadata": "^0.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@types/express": {
+      "optional": true
+    },
+    "express": {
+      "optional": true
+    },
+    "fastify": {
+      "optional": true
+    },
+    "fastify-plugin": {
+      "optional": true
+    },
+    "reflect-metadata": {
+      "optional": true
+    }
   },
   "devDependencies": {
-    "@types/jest": "^30.0.0",
-    "@types/node": "^24.7.1",
-    "@types/supertest": "^6.0.3",
-    "eslint": "^9.37.0",
+    "@types/express": "^5.0.3",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.0",
+    "@types/supertest": "^6.0.2",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "fast-check": "^3.23.2",
+    "fastify": "^5.2.0",
+    "fastify-plugin": "^5.0.1",
     "jest": "^29.7.0",
+    "mitata": "^1.0.0",
+    "prettier": "^3.4.2",
     "rimraf": "^6.0.1",
-    "supertest": "^7.1.4",
-    "ts-jest": "^29.4.5",
-    "typescript": "^5.9.3"
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2",
+    "zod": "^3.24.1"
   },
   "dependencies": {
-    "reflect-metadata": "^0.2.2"
-  }
+    "reflect-metadata": "^0.2.0"
+  },
+  "optionalDependencies": {
+    "zod": "^3.24.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "sideEffects": false
 }

@@ -7,4 +7,13 @@ module.exports = {
     '^.+\\.ts$': 'ts-jest',
   },
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts'],
+  coverageThreshold: {
+    global: {
+      branches: 60,
+      functions: 75,
+      lines: 75,
+      statements: 70,
+    },
+  },
 };

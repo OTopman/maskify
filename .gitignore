@@ -2,14 +2,13 @@ node_modules/
 dist/
 *.log
 
-package-lock.json
+# package-lock.json
 .vscode
 
 coverage
 src/misc.ts
 
 .DS_Store
-convert.py
-ai
-models
-python
+
+.DS_Store
+
