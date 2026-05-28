@@ -3,13 +3,19 @@ import { MiddlewareOptions } from '../utils';
 import { GlobalConfigLoader } from '../utils/config';
 import { buildSchemaFromFields } from '../utils/schema-builder';
 
-const READ_OPERATIONS = new Set([
+const INTERCEPTED_OPERATIONS = new Set([
   'findUnique',
   'findUniqueOrThrow',
   'findFirst',
   'findFirstOrThrow',
   'findMany',
-  'queryRaw',
+  'create',
+  'createMany',
+  'update',
+  'updateMany',
+  'upsert',
+  'delete',
+  'deleteMany',
   'aggregate',
   'groupBy',
 ]);
@@ -21,10 +27,17 @@ interface PrismaAllOperationsArgs {
   query: (args: unknown) => Promise<unknown>;
 }
 
-export function prisma(options?: MiddlewareOptions) {
+export function prisma<T = any>(options?: MiddlewareOptions<T>) {
   const config = options || GlobalConfigLoader.load();
   const { fields, maskOptions: globalOptions } = config;
   const schema = buildSchemaFromFields(fields, globalOptions);
+
+  const applyMask = (result: any) => {
+    if (result == null || typeof result !== 'object') return result;
+    return schema
+      ? MaskifyCore.maskSensitiveFields(result as object, schema)
+      : MaskifyCore.autoMask(result as object, globalOptions);
+  };
 
   return {
     name: 'maskify-prisma',
@@ -32,13 +45,17 @@ export function prisma(options?: MiddlewareOptions) {
       $allModels: {
         async $allOperations({ operation, args, query }: PrismaAllOperationsArgs) {
           const result = await query(args);
-          if (!READ_OPERATIONS.has(operation) || result == null) return result;
-          if (typeof result !== 'object') return result;
-
-          return schema
-            ? MaskifyCore.maskSensitiveFields(result as object, schema)
-            : MaskifyCore.autoMask(result as object, globalOptions);
+          if (!INTERCEPTED_OPERATIONS.has(operation)) return result;
+          return applyMask(result);
         },
+      },
+      async $queryRaw({ args, query }: any) {
+        const result = await query(args);
+        return applyMask(result);
+      },
+      async $queryRawUnsafe({ args, query }: any) {
+        const result = await query(args);
+        return applyMask(result);
       },
     },
   };

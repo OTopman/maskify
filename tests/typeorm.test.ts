@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { Mask, Maskify } from '../src/index';
 import { GlobalConfigLoader } from '../src/utils/config';
 

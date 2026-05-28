@@ -1,13 +1,12 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import fp from 'fastify-plugin';
 import { MaskifyCore } from '../core/maskify';
 import { MiddlewareOptions } from '../utils';
 import { GlobalConfigLoader } from '../utils/config';
 import { buildSchemaFromFields } from '../utils/schema-builder';
 
-const fastifyPlugin = async (
+const fastifyPlugin = async <T = any>(
   app: FastifyInstance,
-  options?: MiddlewareOptions,
+  options?: MiddlewareOptions<T>,
 ) => {
   const config = options || GlobalConfigLoader.load();
   const { fields, maskOptions: globalOptions } = config;
@@ -19,27 +18,19 @@ const fastifyPlugin = async (
       : MaskifyCore.autoMask(payload as object, globalOptions);
 
   app.addHook(
-    'onSend',
+    'preSerialization',
     async (_req: FastifyRequest, _reply: FastifyReply, payload: unknown) => {
-      if (payload == null) return payload;
+      if (payload == null || typeof payload !== 'object') return payload;
+
+      // If the payload is stream-like (contains a pipe method), bypass masking
+      if (typeof (payload as any).pipe === 'function') {
+        return payload;
+      }
 
       try {
-        if (Buffer.isBuffer(payload) || typeof payload === 'string') {
-          const str = Buffer.isBuffer(payload)
-            ? payload.toString('utf-8')
-            : payload;
-          const parsed = JSON.parse(str);
-          if (!parsed || typeof parsed !== 'object') return payload;
-          return JSON.stringify(maskPayload(parsed));
-        }
-
-        if (typeof payload === 'object') {
-          return JSON.stringify(maskPayload(payload));
-        }
-
-        return payload;
+        return maskPayload(payload);
       } catch {
-        // If parsing/masking fails we must never block the response —
+        // If masking fails we must never block the response —
         // return the original payload untouched.
         return payload;
       }
@@ -47,4 +38,23 @@ const fastifyPlugin = async (
   );
 };
 
-export const fastify = fp(fastifyPlugin, { name: 'maskify-ts' });
+// Try to dynamically load fastify-plugin. If it fails, export a placeholder function
+// that throws an error only when executed, preventing module-load crashes.
+let fp: any;
+try {
+  fp = typeof require !== 'undefined' ? require('fastify-plugin') : undefined;
+} catch {
+  // fastify-plugin is not installed or failed to load
+}
+
+export const fastify: <T = any>(
+  app: FastifyInstance,
+  options?: MiddlewareOptions<T>,
+) => any = fp
+  ? fp(fastifyPlugin, { name: 'maskify-ts' })
+  : (_app: any, _options?: any) => {
+      throw new Error(
+        'fastify-plugin is required to use the fastify middleware of maskify-ts. ' +
+        'Please run `npm install fastify-plugin`.'
+      );
+    };

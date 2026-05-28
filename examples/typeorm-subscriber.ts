@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { TypeORMSubscriber } from '../src/middlewares/typeorm';
 import { Mask } from '../src/decorators/mask';
 

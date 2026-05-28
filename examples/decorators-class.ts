@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { Mask, Maskify } from '../src';
 
 class Account {

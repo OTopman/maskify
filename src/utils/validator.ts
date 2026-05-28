@@ -29,8 +29,15 @@ export function validateInput(
     return { valid: false, error: msg };
   }
 
-  if (!value && !allowEmpty) {
-    return { valid: true, sanitized: '' };
+  if (!value) {
+    if (allowEmpty) {
+      return { valid: true, sanitized: '' };
+    }
+    const msg = 'Empty string is not allowed';
+    if (strict) {
+      throw new MaskifyValidationError(msg, { received: '' });
+    }
+    return { valid: false, error: msg };
   }
 
   if (value.length > maxLength) {

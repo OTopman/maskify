@@ -1,7 +1,7 @@
 import { AutoMaskOptions, Detectors, MaskableType } from '../../utils';
 import { getCachedRegex } from '../../utils/cache';
 import { MaskifyCore } from '../maskify';
-import { deepVisit } from './traverser';
+import { deepVisit, deepVisitAsync } from './traverser';
 
 const DEFAULT_SENSITIVE_KEYS = [
   'password',
@@ -74,6 +74,55 @@ export function applyAutoStrategy(
       const type = Detectors.detectType(val);
       if (detectTypes.has(type)) {
         parent[key] = MaskifyCore.mask(val, { ...options, type });
+      }
+    }
+  });
+}
+
+/**
+ * Auto-detect and mask sensitive keys/types asynchronously.
+ */
+export async function applyAutoStrategyAsync(
+  target: any,
+  options: AutoMaskOptions = {}
+): Promise<void> {
+  const keysList = options.sensitiveKeys || DEFAULT_SENSITIVE_KEYS;
+  const detectTypes = new Set(options.autoDetectTypes || DEFAULT_DETECT_TYPES);
+
+  const cacheKey = `keys:${keysList.join(',')}`;
+  const keyRegex = getCachedRegex(cacheKey, () => {
+    const escaped = keysList.map((k) =>
+      k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+    );
+    const boundary = '(?:^|[^a-zA-Z0-9])';
+    const tail = '(?:$|[^a-zA-Z0-9])';
+    return new RegExp(
+      `${boundary}(?:${escaped.join('|')})${tail}`,
+      'i',
+    );
+  });
+
+  const matchesKey = (key: string) => {
+    const normalized = key.replace(/([a-z0-9])([A-Z])/g, '$1_$2');
+    return keyRegex.test(normalized);
+  };
+
+  await deepVisitAsync(target, async (key, val, parent) => {
+    if (
+      matchesKey(key) &&
+      ['string', 'number', 'boolean'].includes(typeof val)
+    ) {
+      parent[key] = await MaskifyCore.maskAsync(String(val), {
+        ...options,
+        type: 'generic',
+      });
+      return;
+    }
+
+    if (typeof val === 'string') {
+      const type = Detectors.detectType(val);
+      if (detectTypes.has(type)) {
+        parent[key] = await MaskifyCore.maskAsync(val, { ...options, type });
       }
     }
   });

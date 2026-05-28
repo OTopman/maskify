@@ -10,6 +10,7 @@ describe('Mongoose Middleware', () => {
     const mockSchema = {
       methods: {} as any,
       options: {},
+      get: jest.fn().mockReturnValue(undefined),
       set: jest.fn(),
     };
 
@@ -34,6 +35,7 @@ describe('Mongoose Middleware', () => {
     const mockSchema = {
       methods: {},
       options: { toJSON: {} },
+      get: jest.fn().mockReturnValue({}),
       set: jest.fn(),
     };
 

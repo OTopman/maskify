@@ -9,7 +9,3 @@ coverage/
 .vscode/
 
 .DS_Store
-convert.py
-ai
-models
-python

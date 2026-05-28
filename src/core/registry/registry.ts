@@ -1,27 +1,18 @@
 import type { MaskOptions } from '../../utils/types';
 
 /**
- * Standard signature for all masker functions.
+ * Standard signature for all masker functions (supports sync and async).
  */
-export type MaskerFn = (value: string, options: MaskOptions) => string;
+export type MaskerFn = (value: string, options: MaskOptions) => Promise<string> | string;
 
 /**
  * Injectable registry for masker functions.
- *
- * ✅ Benefits:
- * - Test isolation: create fresh registry per test
- * - Tree-shaking: unused maskers can be eliminated
- * - Multi-tenant: different registries per request/context
- * - Extensibility: register custom maskers at runtime
  */
 export class MaskerRegistry {
   private maskers = new Map<string, MaskerFn>();
 
   /**
    * Register a masker function for a specific type.
-   * @param type - Unique identifier (e.g., 'email', 'custom-ssn')
-   * @param masker - Function to execute
-   * @returns this for chaining
    */
   register(type: string, masker: MaskerFn): this {
     const key = type.toLowerCase();
@@ -31,8 +22,6 @@ export class MaskerRegistry {
 
   /**
    * Retrieve a masker by type.
-   * @param type - The type to look up
-   * @returns Masker function or undefined
    */
   get(type: string): MaskerFn | undefined {
     return this.maskers.get(type.toLowerCase());
@@ -61,7 +50,6 @@ export class MaskerRegistry {
 
   /**
    * Create a new isolated registry instance.
-   * Useful for testing or multi-tenant scenarios.
    */
   static create(): MaskerRegistry {
     return new MaskerRegistry();
@@ -70,7 +58,6 @@ export class MaskerRegistry {
 
 /**
  * Default process-wide registry populated by `registerDefaults()` at module
- * load. Prefer injecting a local `MaskerRegistry` instance in tests and
- * multi-tenant contexts so state stays isolated.
+ * load.
  */
 export const defaultRegistry = new MaskerRegistry();

@@ -1,6 +1,12 @@
 # maskify-ts
 
-Production-grade data masking for Node.js and TypeScript. GDPR / HIPAA / PCI-DSS friendly, zero runtime dependencies beyond `reflect-metadata`, designed for high-throughput logging, API responses, and analytics pipelines.
+Production-grade data masking for Node.js, Browsers, and TypeScript. GDPR / HIPAA / PCI-DSS friendly, zero runtime dependencies, designed for high-throughput logging, API responses, and analytics pipelines.
+
+
+[![npm version](https://img.shields.io/npm/v/maskify-ts.svg)](https://www.npmjs.com/package/maskify-ts)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://github.com/OTopman/maskify/actions/workflows/test.yml/badge.svg)](https://github.com/OTopman/maskify/actions)
+
 
 - Pre-compiled PII detectors (email, phone, card with Luhn, IP, JWT, URL, address, name)
 - Schema-driven field masking with dot-paths and array wildcards (`users[*].email`)
@@ -35,6 +41,11 @@ Production-grade data masking for Node.js and TypeScript. GDPR / HIPAA / PCI-DSS
     - [TypeORM](#typeorm)
     - [Mongoose](#mongoose)
   - [Decorators](#decorators)
+  - [Zod Schema Integration](#zod-schema-integration)
+  - [Asynchronous Masking Pipeline](#asynchronous-masking-pipeline)
+  - [Context-Aware Masking](#context-aware-masking)
+  - [Full Redaction & Classification](#full-redaction--classification)
+  - [GraphQL Directive Integration](#graphql-directive-integration)
   - [Streams](#streams)
   - [CLI](#cli)
   - [Custom maskers](#custom-maskers)
@@ -210,7 +221,6 @@ Throws `MaskifyConfigError` when the secret is missing or too short. **Never com
 Returns a shallow clone with every `@Mask`-decorated property replaced. Walks the prototype chain, so decorators on base classes are honoured.
 
 ```ts
-import 'reflect-metadata';
 import { Maskify, Mask } from 'maskify-ts';
 
 class User {
@@ -220,7 +230,7 @@ class User {
 }
 
 Maskify.maskClass(new User());
-// → User { id: 1, email: 'j***@c******.com', phone: '+**********23' }
+// → User { id: 1, email: 'j***@c******.com', phone: '+**********0123' }
 ```
 
 ---
@@ -251,6 +261,10 @@ interface MaskOptions {
   maxLength?: number;                    // input length ceiling
   allowEmpty?: boolean;
   secret?: string;                       // used by deterministic mode
+  condition?: (value: string, context?: unknown) => boolean; // dynamic condition
+  context?: unknown;                     // execution context for condition
+  redact?: boolean;                      // replace entire value with label
+  label?: string;                        // custom label for redaction
 }
 
 interface AutoMaskOptions extends MaskOptions {
@@ -412,7 +426,6 @@ doc.mask();     // explicit helper — same result
 ## Decorators
 
 ```ts
-import 'reflect-metadata';
 import { Mask, Maskify } from 'maskify-ts';
 
 class Account {
@@ -428,7 +441,196 @@ class Account {
 const masked = Maskify.maskClass(account);
 ```
 
-Requires `reflect-metadata` (installed as a dependency) and `"experimentalDecorators": true` + `"emitDecoratorMetadata": true` in your `tsconfig.json`.
+Uses standard ECMAScript/TC39 Stage 3 decorators (supported natively in TypeScript 5.0+). No additional libraries (like `reflect-metadata`) or legacy tsconfig flags (`experimentalDecorators`, `emitDecoratorMetadata`) are required.
+
+---
+
+## Zod Schema Integration
+
+If you use **Zod** for schema validation, Maskify provides native adapters to mask fields automatically after parsing or during validation. It is exported under a separate subpath `maskify-ts/zod` to prevent loading Zod when not used.
+
+```ts
+import { z } from 'zod';
+import { zodMask, zodMaskField } from 'maskify-ts/zod';
+
+// 1. Mask an entire object schema (post-validation transform)
+const userSchema = zodMask(
+  z.object({
+    email: z.string().email(),
+    phone: z.string(),
+    name: z.string(),
+  }),
+  {
+    email: { type: 'email' },
+    phone: { type: 'phone' },
+  }
+);
+
+const parsed = userSchema.parse({
+  email: 'jane@company.com',
+  phone: '+14155551234',
+  name: 'Jane Doe',
+});
+// → { email: 'j***@c******.com', phone: '+**********1234', name: 'Jane Doe' }
+
+// 2. Pre-masked field-level string schemas
+const documentSchema = z.object({
+  apiKey: zodMaskField({ maskChar: '•', visibleEnd: 4 }),
+  optionalField: zodMaskField({ type: 'generic' }).optional(),
+});
+```
+
+---
+
+## Asynchronous Masking Pipeline
+
+For use cases requiring asynchronous operations (like Web Crypto in browsers, asynchronous custom maskers, or DB queries), Maskify exposes parallel asynchronous functions for its core API:
+
+- `Maskify.maskAsync(value, options?)`
+- `Maskify.maskSensitiveFieldsAsync(data, schema, options?)`
+- `Maskify.autoMaskAsync(data, options?)`
+- `Maskify.maskClassAsync(instance)`
+- `Maskify.deterministicAsync(value, options)`
+
+```ts
+import { Maskify } from 'maskify-ts';
+
+// WebCrypto HMAC (works in Browser, Edge, and Node.js)
+const hash = await Maskify.deterministicAsync('user@example.com', {
+  secret: process.env.MASKIFY_SECRET!,
+  length: 12
+});
+
+// Deep object masking asynchronously
+const masked = await Maskify.maskSensitiveFieldsAsync(largePayload, schema);
+```
+
+---
+
+## Context-Aware Masking
+
+Maskify supports conditional masking based on runtime context (such as user roles, permissions, or environment details).
+
+You can supply a `condition` function and a `context` value inside `MaskOptions` (or `MaskSchemaOptions` for object schemas). The condition will be evaluated before masking, receiving the raw value and the current context. If it evaluates to `false`, masking is bypassed.
+
+```ts
+import { Maskify } from 'maskify-ts';
+
+const opts = {
+  type: 'email',
+  // Skip masking if the user is an admin
+  condition: (value, context) => {
+    return context?.role !== 'admin';
+  },
+  context: { role: 'admin' }, // Passed at runtime
+};
+
+Maskify.mask('jane@company.com', opts); // → 'jane@company.com' (not masked)
+
+// Works inside schemas and middlewares
+const payload = {
+  email: 'jane@company.com',
+  phone: '+14155550123'
+};
+
+const masked = Maskify.maskSensitiveFields(
+  payload,
+  {
+    email: { type: 'email' },
+    phone: { type: 'phone' },
+  },
+  {
+    context: { role: 'support' },
+    defaultMask: {
+      condition: (value, context: any) => context?.role !== 'admin'
+    }
+  }
+);
+// → email and phone will be masked since role is 'support'
+```
+
+---
+
+## Full Redaction & Classification
+
+If you want to completely redact sensitive values instead of obfuscating individual characters with asterisks, you can enable `redact` mode.
+
+By default, this will replace the value with a classification label like `[REDACTED_EMAIL]`, `[REDACTED_PHONE]`, or `[REDACTED]`. You can also override the label globally or per-field using the `label` option.
+
+```ts
+import { Maskify } from 'maskify-ts';
+
+// Default classification labels
+Maskify.mask('jane@company.com', { redact: true }); // → '[REDACTED_EMAIL]'
+Maskify.mask('+14155550123', { redact: true });     // → '[REDACTED_PHONE]'
+Maskify.mask('mySecretPassword', { redact: true }); // → '[REDACTED]'
+
+// Custom labels
+Maskify.mask('jane@company.com', { redact: true, label: '[CONFIDENTIAL]' }); // → '[CONFIDENTIAL]'
+```
+
+---
+
+## GraphQL Directive Integration
+
+Maskify provides a native schema transformer `graphqlMask` to automatically mask schema fields marked with a `@mask` directive. It supports conditional/context-aware masking by forwarding the GraphQL resolver context.
+
+It is exported under `maskify-ts/graphql` as an optional module. Make sure to install `graphql` and `@graphql-tools/utils`.
+
+```ts
+import { makeExecutableSchema } from '@graphql-tools/schema';
+import { graphqlMask } from 'maskify-ts/graphql'; // or Maskify.graphql
+
+// 1. Define schema with the @mask directive
+const typeDefs = `
+  directive @mask(type: String, redact: Boolean, label: String) on FIELD_DEFINITION
+
+  type User {
+    id: ID!
+    email: String! @mask(type: "email")
+    phone: String! @mask(type: "phone", redact: true)
+  }
+
+  type Query {
+    me: User
+  }
+`;
+
+const resolvers = {
+  Query: {
+    me: () => ({
+      id: '1',
+      email: 'jane@company.com',
+      phone: '+14155550123',
+    }),
+  },
+};
+
+let schema = makeExecutableSchema({ typeDefs, resolvers });
+
+// 2. Transform the schema with Maskify
+schema = graphqlMask(schema);
+```
+
+#### Conditional GraphQL Masking
+To configure conditional masking dynamically, register a global condition function. The transformer automatically passes the GraphQL execution `context` to `Maskify`'s masking pipeline:
+
+```ts
+import { GlobalConfigLoader } from 'maskify-ts';
+import { graphqlMask } from 'maskify-ts/graphql';
+
+// Configure a global condition that uses the GraphQL context
+GlobalConfigLoader.load({
+  maskOptions: {
+    condition: (value, context: any) => {
+      // Bypass masking if the query context currentUser is an admin
+      return context?.currentUser?.role !== 'admin';
+    }
+  }
+});
+
+const transformedSchema = graphqlMask(executableSchema);
+```
 
 ---
 
@@ -559,12 +761,12 @@ npm run bench
 
 ## Compatibility
 
-| Runtime         | Supported |
-| --------------- | --------- |
-| Node.js ≥ 18    | ✅        |
-| Bun             | ✅        |
-| Deno (via npm:) | ✅        |
-| Browsers        | 🚫 (Node crypto required) |
+| Runtime         | Supported | Notes |
+| --------------- | --------- | ----- |
+| Node.js ≥ 18    | ✅        | Natively supported |
+| Bun             | ✅        | Natively supported |
+| Deno (via npm:) | ✅        | Natively supported |
+| Browsers & Edge | ✅        | Supported via Web Crypto (`deterministicAsync`) |
 
 Peer dependencies are all optional — install only the frameworks you actually use.
 
