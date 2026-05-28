@@ -46,6 +46,18 @@ export interface MaskOptions {
    * Prefer `Maskify.deterministic()` for explicit usage.
    */
   secret?: string;
+
+  /** Context-aware masking condition: returns true to mask, false to skip. */
+  condition?: (value: string, context?: unknown) => boolean;
+
+  /** Arbitrary context passed to condition */
+  context?: unknown;
+
+  /** Redact instead of masking with characters */
+  redact?: boolean;
+
+  /** Custom label for redaction (e.g. "[CONFIDENTIAL]"). If omitted, defaults to [REDACTED_TYPE] */
+  label?: string;
 }
 
 export interface AutoMaskOptions extends MaskOptions {
@@ -64,25 +76,62 @@ export interface MaskSchemaOptions {
 
   /** Options to use for fields that are masked by default in 'allow' mode */
   defaultMask?: MaskOptions;
+
+  /** Context to forward to masking callbacks/conditions */
+  context?: unknown;
 }
 
-export type MiddlewareField =
-  | string
+export type MiddlewareField<T = any> =
+  | (Paths<T> & string)
   | {
-      name: string;
+      name: Paths<T> & string;
       options?: MaskOptions;
     };
 
-export interface MiddlewareOptions {
+export interface MiddlewareOptions<T = any> {
   /**
    * List of fields to mask.
    * Each field can be a string (uses global maskOptions)
    * or an object with custom per-field options.
    */
-  fields?: (string | { name: string; options?: MaskOptions })[];
+  fields?: MiddlewareField<T>[];
 
   /**
    * Global mask options applied if field-specific options are not provided.
    */
   maskOptions?: AutoMaskOptions;
 }
+
+type Prev = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+/**
+ * Utility type to extract all valid dot-notation paths of an object/array.
+ */
+export type Paths<T, Depth extends number = 5> = [Depth] extends [never]
+  ? never
+  : T extends any[]
+  ?
+      | `[*]`
+      | `[${number}]`
+      | (T[number] extends object
+          ? | `[*].${Paths<T[number], Prev[Depth]>}`
+            | `[${number}].${Paths<T[number], Prev[Depth]>}`
+          : never)
+  : T extends object
+  ? {
+      [K in keyof T & (string | number)]: T[K] extends any[]
+        ?
+            | `${K}`
+            | `${K}[*]`
+            | `${K}[${number}]`
+            | (T[K][number] extends object
+                ? | `${K}[*].${Paths<T[K][number], Prev[Depth]>}`
+                  | `${K}[${number}].${Paths<T[K][number], Prev[Depth]>}`
+                : never)
+        : T[K] extends object
+        ?
+            | `${K}`
+            | `${K}.${Paths<T[K], Prev[Depth]>}`
+        : `${K}`;
+    }[keyof T & (string | number)]
+  : never;

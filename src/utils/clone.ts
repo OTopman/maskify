@@ -10,7 +10,11 @@ export function safeClone<T>(obj: T, map = new WeakMap<object, unknown>()): T {
 
   if (map.has(obj as object)) return map.get(obj as object) as T;
 
-  if (typeof structuredClone === 'function') {
+  // Only use structuredClone for plain objects/arrays — it strips custom prototypes
+  const proto = Object.getPrototypeOf(obj);
+  const isPlain = proto === Object.prototype || proto === null || Array.isArray(obj);
+
+  if (isPlain && typeof structuredClone === 'function') {
     try {
       return structuredClone(obj);
     } catch {
@@ -51,7 +55,7 @@ export function safeClone<T>(obj: T, map = new WeakMap<object, unknown>()): T {
     return cloned as unknown as T;
   }
 
-  const clone = {} as T;
+  const clone = Object.create(proto) as T;
   map.set(obj as object, clone as object);
 
   for (const key of Object.keys(obj as object)) {

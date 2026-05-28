@@ -1,19 +1,19 @@
-import 'reflect-metadata';
-
 import type { Application as ExpressApp } from 'express';
 import type { FastifyInstance } from 'fastify';
 import { registerDefaults } from './core/bootstrap';
 import { SmartMasker } from './core/compiler';
 import { MaskifyCore } from './core/maskify';
-import { maskDeterministic } from './maskers/deterministic';
+import { maskDeterministic, maskDeterministicAsync } from './maskers/deterministic';
 import { middlewares as _middlewares } from './middlewares';
-import type { AutoMaskOptions, MaskOptions, MiddlewareOptions } from './utils';
-import { MASK_METADATA_KEY } from './decorators/mask';
+import type { AutoMaskOptions, MaskOptions, MiddlewareOptions, Paths } from './utils';
+import { getMaskMetadata } from './decorators/mask';
+import { registry as _registry } from './core/registry';
+import { graphqlMask } from './graphql';
 
 // Populate the process-wide registry with the built-in maskers.
 registerDefaults();
 
-export { Mask } from './decorators';
+export { Mask, getMaskMetadata } from './decorators';
 export {
   createMaskStream,
   MaskifyStream,
@@ -21,8 +21,14 @@ export {
 } from './stream';
 export { defineConfig, GlobalConfigLoader } from './utils/config';
 export { MaskifyError, MaskifyConfigError, MaskifyValidationError } from './utils/errors';
-export { MaskerRegistry } from './core/registry';
-export type { AutoMaskOptions, MaskOptions, MiddlewareOptions };
+export { MaskerRegistry, registry } from './core/registry';
+export type { AutoMaskOptions, MaskOptions, MiddlewareOptions, Paths };
+
+// Expose Zod integration (Zod is an optional dependency)
+export { zodMask, zodMaskField } from './zod';
+
+// Expose GraphQL integration
+export { graphqlMask } from './graphql';
 
 export type MaskifyServerType = 'express' | 'fastify';
 
@@ -30,7 +36,7 @@ function collectMaskMetadata(instance: object): Record<string, MaskOptions> | nu
   let proto: object | null = Object.getPrototypeOf(instance);
   let merged: Record<string, MaskOptions> | null = null;
   while (proto && proto !== Object.prototype) {
-    const meta = Reflect.getMetadata(MASK_METADATA_KEY, proto);
+    const meta = getMaskMetadata(proto);
     if (meta) {
       merged = { ...(meta as Record<string, MaskOptions>), ...(merged || {}) };
     }
@@ -41,12 +47,23 @@ function collectMaskMetadata(instance: object): Record<string, MaskOptions> | nu
 
 export namespace Maskify {
   export const mask = MaskifyCore.mask;
+  export const maskAsync = MaskifyCore.maskAsync;
+
   export const pattern = MaskifyCore.pattern;
+
   export const maskSensitiveFields = MaskifyCore.maskSensitiveFields;
+  export const maskSensitiveFieldsAsync = MaskifyCore.maskSensitiveFieldsAsync;
+
   export const deterministic = maskDeterministic;
+  export const deterministicAsync = maskDeterministicAsync;
+
   export const autoMask = MaskifyCore.autoMask;
+  export const autoMaskAsync = MaskifyCore.autoMaskAsync;
+
   export const smart = SmartMasker.process;
   export const middlewares = _middlewares;
+  export const registry = _registry;
+  export const graphql = graphqlMask;
 
   /**
    * Returns a new instance with all `@Mask`-decorated properties replaced by
@@ -66,6 +83,28 @@ export namespace Maskify {
       const current = (clone as any)[key];
       if (current !== undefined && current !== null) {
         (clone as any)[key] = MaskifyCore.mask(String(current), metadata[key]);
+      }
+    }
+
+    return clone;
+  }
+
+  /**
+   * Asynchronous version of maskClass.
+   */
+  export async function maskClassAsync<T extends object>(instance: T): Promise<T> {
+    if (!instance || typeof instance !== 'object') return instance;
+
+    const metadata = collectMaskMetadata(instance);
+    if (!metadata) return instance;
+
+    const proto = Object.getPrototypeOf(instance);
+    const clone = Object.assign(Object.create(proto || null), instance) as T;
+
+    for (const key of Object.keys(metadata)) {
+      const current = (clone as any)[key];
+      if (current !== undefined && current !== null) {
+        (clone as any)[key] = await MaskifyCore.maskAsync(String(current), metadata[key]);
       }
     }
 

@@ -39,7 +39,7 @@ describe('Allowlist Strategy', () => {
       data,
       {
         'user.*': {}, // Allow direct children of user
-      },
+      } as any,
       { mode: 'allow' }
     ) as typeof data;
 

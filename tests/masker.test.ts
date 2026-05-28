@@ -109,7 +109,7 @@ describe('Maskify Utility', () => {
     it('should handle missing paths gracefully', () => {
       const masked = Maskify.maskSensitiveFields(sample, {
         'nonexistent.field': { type: 'email' },
-      });
+      } as any);
       expect(masked).toEqual(sample);
     });
 

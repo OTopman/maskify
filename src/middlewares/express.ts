@@ -17,7 +17,7 @@ function ensureExpressInstalled() {
   }
 }
 
-export function express(options?: MiddlewareOptions) {
+export function express<T = any>(options?: MiddlewareOptions<T>) {
   ensureExpressInstalled();
 
   const config = options || GlobalConfigLoader.load();

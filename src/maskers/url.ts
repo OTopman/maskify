@@ -4,13 +4,18 @@ export function maskUrl(urlStr: string, opts: MaskOptions): string {
   if (!urlStr) return '';
 
   try {
-    const url = new URL(urlStr);
+    const isRelative = !urlStr.startsWith('http://') && !urlStr.startsWith('https://');
+    if (isRelative && !urlStr.startsWith('/')) {
+      // Not an absolute URL and not a path — return as-is
+      return urlStr;
+    }
+    const url = isRelative ? new URL(urlStr, 'http://localhost') : new URL(urlStr);
     const { maskChar = '*' } = opts;
 
-    // Default sensitive keys to look for if none provided in a hypothetical 'params' option
-    // For now, we assume we want to mask values of ANY param that looks sensitive,
-    // or we mask specific params if we extended MaskOptions.
-    // Let's implement a safe default: mask typical sensitive keys.
+    if (url.password) {
+      url.password = maskChar.repeat(8);
+    }
+
     const sensitiveKeys = [
       'token',
       'key',
@@ -26,7 +31,7 @@ export function maskUrl(urlStr: string, opts: MaskOptions): string {
       }
     });
 
-    return url.toString();
+    return isRelative ? url.pathname + url.search : url.toString();
   } catch {
     // If not a valid URL, return as is or treat as generic string
     return urlStr;

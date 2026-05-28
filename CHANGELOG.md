@@ -6,6 +6,29 @@
 All notable changes to this project will be documented in this file.
 
 
+## v4.0.0 - 2026-05-28
+### 🚀 New Features
+- **TC39 Stage 3 Decorator Support**: Upgraded the `@Mask` decorator from legacy experimental syntax to the standard TC39 Stage 3 decorator syntax. Cleaned up `reflect-metadata` dependency entirely, making Maskify **zero-dependency** by default.
+- **Browser & Edge Support**: Made the entire codebase browser-compatible. Replaced the `node:crypto` dependency with Web Crypto API (`globalThis.crypto.subtle`) for deterministic masking.
+- **Async Masking Pipeline**: Added a full asynchronous pipeline for high-performance and flexible masking:
+  - `Maskify.maskAsync()`
+  - `Maskify.maskSensitiveFieldsAsync()`
+  - `Maskify.autoMaskAsync()`
+  - `Maskify.maskClassAsync()`
+  - `Maskify.deterministicAsync()`
+- **Zod Integration**: Added native support for Zod schemas via a dedicated subpath import `maskify-ts/zod`. Includes:
+  - `zodMask(schema, maskSchema)`: Object-level schema preprocessor.
+  - `zodMaskField(options)`: Field-level pre-transformed string field schema.
+- **Context-Aware / Conditional Masking**: Added `condition` predicates and a runtime `context` parameter to `MaskOptions` and schema options, enabling dynamic bypass of masking operations (e.g. based on user role or permission level).
+- **Full Redaction & Classification Modes**: Added `redact` and `label` settings to replace character-by-character asterisk obfuscation with full value redaction and classification labels (e.g. `[REDACTED_EMAIL]`, `[REDACTED_PHONE]`, or custom text overrides like `[CONFIDENTIAL]`).
+- **GraphQL Schema Directive Integration**: Created `graphqlMask` schema transformer (exported via subpath `maskify-ts/graphql`) to automatically wrap and resolve resolvers for fields annotated with `@mask` directives, passing along the resolver request context to conditional masking rules.
+- **Unified Benchmarks & CI Performance Verification**: Integrated mitata benchmarks directly into the CI pipeline to prevent performance regressions.
+- **Full Compile-Time Type-Safe Schema Validation**: Enforced compile-time dot-notation verification (`Paths<T>`) for masking schemas across `maskSensitiveFields`, `maskSensitiveFieldsAsync`, streams, Zod schemas, and all server/database middlewares (Express, Fastify, Prisma, Mongoose, TypeORM).
+
+### ⚠️ Breaking Changes
+- The `@Mask` decorator now requires TypeScript 5.0+ and Stage 3 decorator support. The `reflect-metadata` library is no longer loaded or required.
+- `Maskify.deterministic()` will throw a `MaskifyConfigError` if run synchronously in a browser or edge environment. Use the asynchronous `Maskify.deterministicAsync()` instead.
+
 ## v3.5.0 - 2026-01-15
 ### 🚀 New Features
 - **Configuration Autoloading**: Maskify now automatically searches for and loads configuration from `maskify.config.js`, `.maskifyrc`, or `package.json` if no options are passed to middlewares or CLI.

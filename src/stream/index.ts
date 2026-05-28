@@ -1,11 +1,11 @@
 import { Transform, TransformCallback } from 'stream';
 import { MaskifyCore } from '../core/maskify';
-import { GlobalConfigLoader, MaskOptions } from '../utils';
+import { GlobalConfigLoader, MaskOptions, Paths } from '../utils';
 import { buildSchemaFromFields } from '../utils/schema-builder';
 
-export interface MaskStreamOptions extends MaskOptions {
+export interface MaskStreamOptions<T = any> extends MaskOptions {
   /** Schema for masking fields in object mode. */
-  schema?: Record<string, MaskOptions>;
+  schema?: Partial<Record<Paths<T> & string, MaskOptions>>;
 
   /** 'mask' (blocklist) or 'allow' (allowlist). */
   mode?: 'mask' | 'allow';
@@ -14,14 +14,14 @@ export interface MaskStreamOptions extends MaskOptions {
   configOverride?: MaskOptions;
 }
 
-export class MaskifyStream extends Transform {
-  private readonly schema: Record<string, MaskOptions> | null;
-  private readonly options: MaskStreamOptions;
+export class MaskifyStream<T = any> extends Transform {
+  private readonly schema: Partial<Record<Paths<T> & string, MaskOptions>> | null;
+  private readonly options: MaskStreamOptions<T>;
   private readonly configOverride?: MaskOptions;
 
   constructor(
-    schema?: Record<string, MaskOptions>,
-    options?: MaskStreamOptions,
+    schema?: Partial<Record<Paths<T> & string, MaskOptions>>,
+    options?: MaskStreamOptions<T>,
   ) {
     super({ objectMode: true });
 
@@ -39,7 +39,7 @@ export class MaskifyStream extends Transform {
     if (schema && Object.keys(schema).length > 0) {
       this.schema = schema;
     } else {
-      this.schema = buildSchemaFromFields(fileConfig.fields, globalMaskOpts);
+      this.schema = buildSchemaFromFields(fileConfig.fields, globalMaskOpts) as any;
     }
   }
 
@@ -86,7 +86,7 @@ export class MaskifyStream extends Transform {
       const masked = this.schema
         ? MaskifyCore.maskSensitiveFields(
             data as object,
-            this.schema,
+            this.schema as any,
             { mode: this.options.mode, defaultMask: this.options },
             this.configOverride,
           )
@@ -102,9 +102,9 @@ export class MaskifyStream extends Transform {
   }
 }
 
-export function createMaskStream(
-  schema?: Record<string, MaskOptions>,
-  options?: MaskStreamOptions,
+export function createMaskStream<T = any>(
+  schema?: Partial<Record<Paths<T> & string, MaskOptions>>,
+  options?: MaskStreamOptions<T>,
 ) {
-  return new MaskifyStream(schema, options);
+  return new MaskifyStream<T>(schema, options);
 }

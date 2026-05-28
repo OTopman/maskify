@@ -32,7 +32,7 @@ describe('Prisma Middleware', () => {
     expect(result.email).toContain('@');
   });
 
-  it('should NOT mask data on write operations', async () => {
+  it('should mask data on write operation results (create returns DB data)', async () => {
     const prismaMiddleware = Maskify.middlewares.prisma({
       fields: ['email'],
     });
@@ -42,7 +42,7 @@ describe('Prisma Middleware', () => {
 
     const params = {
       model: 'User',
-      operation: 'create', // Write op
+      operation: 'create', // Write op — result still contains sensitive data from DB
       args: {},
       query: mockQuery,
     };
@@ -51,6 +51,8 @@ describe('Prisma Middleware', () => {
       params
     );
 
-    expect(result.email).toBe('test@example.com'); // Untouched
+    // Write operation results are now masked because the returned data
+    // comes from the database and may contain sensitive fields
+    expect(result.email).not.toBe('test@example.com');
   });
 });

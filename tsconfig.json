@@ -12,9 +12,7 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "skipLibCheck": true
   },
   "include": ["src/**/*", "tests/**/*"],
   "exclude": ["examples/**/*", "dist/**/*", "node_modules"]

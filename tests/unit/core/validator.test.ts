@@ -35,8 +35,14 @@ describe('validator', () => {
       );
     });
 
-    it('treats empty input as valid with empty sanitized value', () => {
-      expect(validateInput('').sanitized).toBe('');
+    it('rejects empty input by default (allowEmpty defaults to false)', () => {
+      const result = validateInput('');
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('not allowed');
+    });
+
+    it('allows empty input when allowEmpty is true', () => {
+      expect(validateInput('', { allowEmpty: true }).sanitized).toBe('');
     });
   });
 

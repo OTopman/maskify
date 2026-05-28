@@ -18,8 +18,8 @@ export const PATTERNS = {
   // IPv4
   IPV4: /^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/,
 
-  // IPv6 (simplified)
-  IPV6: /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/,
+  // IPv6 (supports abbreviation)
+  IPV6: /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^(?:[0-9a-fA-F]{1,4}:){1,7}:$|^(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}$|^(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}$|^(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}$|^(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}$|^(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}$|^[0-9a-fA-F]{1,4}:(?::[0-9a-fA-F]{1,4}){1,6}$|^:(?::[0-9a-fA-F]{1,4}){1,7}$|^::$/,
 
   // JWT: header.payload.signature (header must be base64url "eyJ..." prefix;
   // payload/signature are base64url but can't always be assumed to start with "eyJ")
@@ -35,8 +35,8 @@ export const PATTERNS = {
   ADDRESS_SUFFIX:
     /\b(Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Place|Pl|Way|Terrace|Terr)\b/i,
 
-  // Name characters (letters, spaces, hyphens, apostrophes)
-  NAME_CHARS: /^[A-Za-z\s.\-']+$/,
+  // Name characters (Unicode letters, spaces, hyphens, apostrophes)
+  NAME_CHARS: /^[\p{L}\s.\-']+$/u,
 
   // Sensitive field names — anchored to the *whole* key so "author" doesn't
   // fall into "auth" and "secretary" doesn't fall into "secret".

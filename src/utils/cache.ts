@@ -18,7 +18,7 @@ class LimitedCache<K, V> {
 
   set(key: K, value: V): void {
     // Safety Valve: Prevent infinite growth
-    if (this.map.size >= this.limit) {
+    if (!this.map.has(key) && this.map.size >= this.limit) {
       // Maps preserve insertion order. The first key is the oldest.
       const firstKey = this.map.keys().next().value;
       if (firstKey !== undefined) {
@@ -58,6 +58,9 @@ export function getCachedPathSegments(
 }
 
 export function getCachedRegex(key: string, creator: () => RegExp): RegExp {
+  if (GlobalConfigLoader.load().disableCache) {
+    return creator();
+  }
   let regex = regexCache.get(key);
   if (!regex) {
     regex = creator();

@@ -1,6 +1,6 @@
 import { MaskifyCore } from '../core/maskify';
 import { applyAutoStrategy } from '../core/strategies/auto-strategy';
-import { MASK_METADATA_KEY } from '../decorators/mask';
+import { getMaskMetadata } from '../decorators/mask';
 import { MaskOptions, MiddlewareField, MiddlewareOptions } from '../utils';
 import { safeClone } from '../utils/clone';
 import { GlobalConfigLoader } from '../utils/config';
@@ -15,14 +15,14 @@ import { buildSchemaFromFields } from '../utils/schema-builder';
  * `JSON.stringify()` produce masked output while the in-memory entity
  * remains writable.
  */
-export class TypeORMSubscriber {
-  private readonly options: MiddlewareOptions;
+export class TypeORMSubscriber<Entity = any> {
+  private readonly options: MiddlewareOptions<Entity>;
   private readonly schema: Record<string, MaskOptions> | null;
 
-  constructor(options?: MiddlewareOptions) {
-    this.options = options || GlobalConfigLoader.load();
+  constructor(options?: MiddlewareOptions<Entity>) {
+    this.options = options || (GlobalConfigLoader.load() as any);
     this.schema = buildSchemaFromFields(
-      this.options.fields as MiddlewareField[] | undefined,
+      this.options.fields as MiddlewareField<Entity>[] | undefined,
       this.options.maskOptions,
     );
   }
@@ -30,10 +30,7 @@ export class TypeORMSubscriber {
   afterLoad(entity: any): void {
     if (!entity || typeof entity !== 'object') return;
 
-    const proto = Object.getPrototypeOf(entity);
-    const decoratorMeta = proto
-      ? Reflect.getMetadata(MASK_METADATA_KEY, proto)
-      : null;
+    const decoratorMeta = entity ? getMaskMetadata(entity) : null;
 
     const schema = this.schema;
     const maskOptions = this.options.maskOptions;
@@ -72,5 +69,5 @@ export class TypeORMSubscriber {
   }
 }
 
-export const typeorm = (options?: MiddlewareOptions) =>
-  new TypeORMSubscriber(options);
+export const typeorm = <T = any>(options?: MiddlewareOptions<T>) =>
+  new TypeORMSubscriber<T>(options);
