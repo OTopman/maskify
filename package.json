@@ -1,6 +1,6 @@
 {
   "name": "maskify-ts",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "description": "Production-grade data masking for Node.js — GDPR/HIPAA compliant, type-safe, high-performance",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
