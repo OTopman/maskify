@@ -12,10 +12,10 @@ const fastifyPlugin = async <T = any>(
   const { fields, maskOptions: globalOptions } = config;
   const schema = buildSchemaFromFields(fields, globalOptions);
 
-  const maskPayload = (payload: unknown) =>
+  const maskPayloadAsync = async (payload: unknown) =>
     schema
-      ? MaskifyCore.maskSensitiveFields(payload as object, schema)
-      : MaskifyCore.autoMask(payload as object, globalOptions);
+      ? MaskifyCore.maskSensitiveFieldsAsync(payload as object, schema)
+      : MaskifyCore.autoMaskAsync(payload as object, globalOptions);
 
   app.addHook(
     'preSerialization',
@@ -28,7 +28,7 @@ const fastifyPlugin = async <T = any>(
       }
 
       try {
-        return maskPayload(payload);
+        return await maskPayloadAsync(payload);
       } catch {
         // If masking fails we must never block the response —
         // return the original payload untouched.

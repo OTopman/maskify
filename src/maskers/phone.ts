@@ -1,34 +1,21 @@
-import { MaskOptions } from '../utils';
-import { DEFAULT_MASK_OPTIONS } from '../utils/defaults';
+import { createDualModeMasker, MaskContext } from '../core/masker';
 
-/**
- * Mask a phone number.
- * - Preserves "+" only if visibleStart > 0
- * - Otherwise, masks it along with digits.
- *
- * Examples:
- *   "+2348123456789" (visibleStart=2, visibleEnd=3) → "+81****6789"
- *   "+2348123456789" (visibleStart=0) → "*******6789"
- */
-export function maskPhone(
-  phone: string,
-  options: Pick<
-    MaskOptions,
-    'maxAsterisks' | 'maskChar' | 'visibleStart' | 'visibleEnd'
-  > = {}
-): string {
-  const config = {
-    ...DEFAULT_MASK_OPTIONS,
-    visibleStart: 2, // Phone specific override
-    visibleEnd: 3, // Phone specific override
-    ...options,
-  };
+export interface PhoneOptions {
+  maxAsterisks?: number;
+  maskChar?: string;
+  visibleStart?: number;
+  visibleEnd?: number;
+  visiblePrefixDigits?: number;
+  visibleSuffixDigits?: number;
+}
+
+function runPhoneMasking(phone: string, opts: PhoneOptions, _ctx: MaskContext): string {
+  const visibleStart = opts.visibleStart ?? opts.visiblePrefixDigits ?? 2;
+  const visibleEnd = opts.visibleEnd ?? opts.visibleSuffixDigits ?? 3;
   const {
     maxAsterisks = 4,
     maskChar = '*',
-    visibleStart = 2,
-    visibleEnd = 3,
-  } = config;
+  } = opts;
 
   if (!phone) return '';
 
@@ -65,3 +52,5 @@ export function maskPhone(
     visibleStart > 0 && hasPlus ? '+' : ''
   }${start}${maskedMiddle}${end}`;
 }
+
+export const maskPhone = createDualModeMasker(runPhoneMasking, { coerce: true });

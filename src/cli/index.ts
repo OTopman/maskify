@@ -94,13 +94,13 @@ async function main(): Promise<void> {
     try {
       const json = JSON.parse(line);
       const masked = schema
-        ? MaskifyCore.maskSensitiveFields(
+        ? await MaskifyCore.maskSensitiveFieldsAsync(
             json,
             schema,
             { mode: options.mode, defaultMask: maskOpts },
             maskOpts,
           )
-        : MaskifyCore.autoMask(json, maskOpts);
+        : await MaskifyCore.autoMaskAsync(json, maskOpts);
       process.stdout.write(JSON.stringify(masked) + '\n');
     } catch {
       process.stdout.write(line + '\n');

@@ -1,6 +1,12 @@
 import { z } from 'zod';
-import { Maskify } from '../index';
-import type { MaskOptions, Paths } from '../utils/types';
+import { registerDefaults } from '../core/bootstrap';
+import { MaskifyCore } from '../core/maskify';
+import type { Paths } from '../utils/types';
+
+// Ensure the process-wide registry is populated even when this module is
+// imported directly (e.g. `import { zodMask } from 'maskify-ts/zod'`)
+// without first importing the main entry point. Idempotent.
+registerDefaults();
 
 /**
  * Zod schema preprocessor / transformer that masks sensitive fields in an object schema.
@@ -10,11 +16,11 @@ import type { MaskOptions, Paths } from '../utils/types';
  */
 export function zodMask<T extends z.ZodTypeAny>(
   schema: T,
-  maskSchema: Partial<Record<Paths<z.output<T>> & string, MaskOptions>>
+  maskSchema: Partial<Record<Paths<z.output<T>> & string, any>>
 ): z.ZodEffects<T, z.output<T>, z.input<T>> {
   return schema.transform((val) => {
     if (val && typeof val === 'object') {
-      return Maskify.maskSensitiveFields(val as any, maskSchema as any);
+      return MaskifyCore.maskSensitiveFields(val as any, maskSchema as any);
     }
     return val;
   });
@@ -24,8 +30,8 @@ export function zodMask<T extends z.ZodTypeAny>(
  * Pre-configured Zod string field schema that automatically masks input strings.
  * Can be made optional or nullable using .optional() / .nullable().
  *
- * @param options - Masking options.
+ * @param options - Masking options or functional monadic masker.
  */
-export function zodMaskField(options?: MaskOptions): z.ZodEffects<z.ZodString, string, string> {
-  return z.string().transform((val) => Maskify.mask(val, options));
+export function zodMaskField(options?: any): z.ZodEffects<z.ZodString, string, string> {
+  return z.string().transform((val) => MaskifyCore.mask(val, options));
 }

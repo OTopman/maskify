@@ -1,24 +1,15 @@
-import { MaskOptions } from '../utils';
+import { createMasker, Masker, MaskContext } from '../core/masker';
 
-/**
-   * Pattern-based masking helper.
-   * Supports:
-   *  - '#' reveal char
-   *  - '*' mask char (opts.maskChar)
-   *  - '{n}' repeat expansion for previous symbol
-   * Fault-tolerant: will append masked tail if value longer than pattern.
-   */
-export function maskPattern(
-  value: unknown,
-  pattern: string,
-  options: Pick<MaskOptions, 'maskChar'> = {}
-): string {
+export interface PatternOptions {
+  pattern: string;
+  maskChar?: string;
+}
+
+function runPatternMasking(value: any, pattern: string, maskChar = '*', _ctx: MaskContext = {}): string {
   if (value == null) return '';
   const str = String(value);
-  const maskChar = options.maskChar ?? '*';
   const maxTail = 4;
 
-  // expand repeats like '#{4}' => '####'
   const expanded = pattern.replace(/([#*])\{(\d+)\}/g, (_, ch, count) => {
     const repeatCount = Number(count);
     if (repeatCount > 1000) {
@@ -40,11 +31,10 @@ export function maskPattern(
 
     const ch = str[vi];
 
-    // Preserving whitespace in input if the pattern expects a mask/reveal character
     if (/\s/.test(ch) && p !== ch && (p === '#' || p === '*')) {
       out += ch;
       vi++;
-      i--; // Re-evaluate the same pattern character for the next non-whitespace character
+      i--;
       continue;
     }
 
@@ -57,7 +47,7 @@ export function maskPattern(
     } else {
       out += p;
       if (p === ch) {
-        vi++; // Consume formatting characters if they match
+        vi++;
       }
     }
   }
@@ -68,4 +58,18 @@ export function maskPattern(
   }
 
   return out;
+}
+
+// maskPattern takes (value, pattern, options) rather than (value, options) —
+// it doesn't fit createDualModeMasker's shared dispatch shape, so the
+// direct-vs-builder check is hand-rolled here instead.
+export function maskPattern(value: any, pattern: string, options?: { maskChar?: string }): string;
+export function maskPattern(opts: PatternOptions): Masker<any>;
+export function maskPattern(first: any, second?: any, third?: any): any {
+  const isBuilder = second === undefined && first !== null && typeof first === 'object';
+  if (isBuilder) {
+    const opts = first as PatternOptions;
+    return createMasker((val: any, ctx: MaskContext) => runPatternMasking(val, opts.pattern, opts.maskChar, ctx));
+  }
+  return runPatternMasking(first, second, third?.maskChar);
 }

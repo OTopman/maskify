@@ -1,5 +1,4 @@
 import { MaskifyCore } from '../core/maskify';
-import { applyAutoStrategy } from '../core/strategies/auto-strategy';
 import { getMaskMetadata } from '../decorators/mask';
 import { MaskOptions, MiddlewareField, MiddlewareOptions } from '../utils';
 import { safeClone } from '../utils/clone';
@@ -61,7 +60,7 @@ export class TypeORMSubscriber<Entity = any> {
           return MaskifyCore.maskSensitiveFields(clone, schema);
         }
         if (!decoratorMeta) {
-          applyAutoStrategy(clone, maskOptions);
+          return MaskifyCore.autoMask(clone, maskOptions);
         }
         return clone;
       },

@@ -60,4 +60,4 @@ export class MaskerRegistry {
  * Default process-wide registry populated by `registerDefaults()` at module
  * load.
  */
-export const defaultRegistry = new MaskerRegistry();
+export const registry = new MaskerRegistry();

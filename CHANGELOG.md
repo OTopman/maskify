@@ -6,6 +6,36 @@
 All notable changes to this project will be documented in this file.
 
 
+## v6.0.0 - 2026-06-17
+### 🚀 New Features
+- **Axiomify middleware**: Added `Maskify.middlewares.axiomify(app, options)`, an `onRequest`-hook adapter for the [Axiomify](https://github.com/OTopman/axiomify) framework that masks object/array response payloads before `res.send()` serializes them. Masking is synchronous only — Axiomify's `res.send()` writes to the socket before returning, so async custom maskers aren't supported through this adapter; mask those fields in the handler before calling `res.send()`.
+
+### 🔒 Security
+- **Prototype-write guard in the JIT schema compiler**: `m.object()`'s compiled function no longer uses `Object.assign(res, obj)` to copy input properties. An input object with an own, enumerable `"__proto__"` key (e.g. from `JSON.parse` of untrusted JSON) would invoke the inherited `__proto__` setter through `Object.assign` and swap the compiled output's prototype. The copy is now done key-by-key with `"__proto__"` explicitly skipped.
+
+### 🛠 Refactors & Fixes
+- **Removed a circular import**: `core/strategies/auto-strategy.ts` imported `MaskifyCore` from `core/maskify.ts`, which itself imports `auto-strategy.ts` — the only real import cycle in `src/core`. `applyAutoStrategy`/`applyAutoStrategyAsync` now take an injected `maskFn` callback instead, matching the pattern already used by `allow-strategy.ts` and `mask-strategy.ts`.
+- **Deduplicated the dual-signature masker dispatch**: every built-in masker (`email`, `phone`, `card`, `ip`, `jwt`, `name`, `address`, `url`, `generic`, `deterministic`/`deterministicAsync`) re-implemented the same "direct call vs. builder" dispatch logic. Replaced with a single shared `createDualModeMasker()` helper in `core/masker.ts`. `pattern.ts` keeps its own dispatch — its 3-argument `(value, pattern, options)` signature doesn't fit the shared shape.
+- **Merged the split registry module**: `core/registry.ts` (a 2-line re-export facade) and `core/registry/registry.ts` are now a single `core/registry/index.ts`, matching the `folder/index.ts` convention used everywhere else in `src/`.
+- **`TypeORMSubscriber` now routes through `MaskifyCore.autoMask`** instead of importing `applyAutoStrategy` directly, so it stays behind the same public entry point as the other adapters.
+- **Fixed a registry-population regression in the Zod/GraphQL subpaths**: `zod/index.ts` and `graphql/index.ts` previously imported `Maskify` from the package's main `index.ts`, which populates the masker registry as a side effect (`registerDefaults()`). Changing those imports to `core/maskify` directly (removing an unnecessary self-referential import cycle) silently broke that — `import { zodMask } from 'maskify-ts/zod'` on its own left the registry empty, degrading email/phone/etc. masking to `"********"`. Both subpaths now call `registerDefaults()` themselves, so masking works correctly regardless of import order.
+- **Renamed `core/compiler/` to `core/textscan/`** — it does free-text pattern scanning and delegates to `MaskifyCore.mask`, unrelated to `core/schema.ts`'s code-generating JIT compiler. The shared "compiler" name was confusing between the two.
+- Removed dead `utils/defaults.ts` (`DEFAULT_MASK_OPTIONS` was never imported anywhere).
+- Completed the `utils/index.ts` barrel — `schema-builder` and `validator` are now re-exported alongside the rest of `utils/*`.
+- Fixed a `ctx` signature inconsistency: `pattern.ts` and `deterministic.ts`'s async builder were the only maskers that dropped the `MaskContext` parameter; all built-in maskers now thread it through consistently.
+- Added sync/async parity tests (`tests/unit/core/strategy-parity.test.ts`) asserting `deepVisit`/`deepVisitAsync`, `applyMaskStrategy`/`Async`, `applyAllowStrategy`/`Async`, and `applyAutoStrategy`/`Async` produce identical output — each strategy hand-duplicates its async logic as a separate twin, with nothing previously guarding the two from drifting apart.
+
+### 🚀 New Features
+- **JIT-Compiled Schema Builder (`m.object`)**: Added high-performance compiled schemas under the `m` namespace that generate optimized flat functions, bypassing runtime path-traversal overhead for **4x - 10x faster execution**.
+- **Monadic Chainable Builders**: Added chainable modifiers directly on all built-in maskers (e.g. `m.email().when(cond).redact(label).transform(fn)`), replacing legacy options objects.
+- **Nested Array Resolution**: Schema properties compiled with `m.object` now automatically detect nested arrays of primitives and objects, mapping the element schema across items transparently.
+- **Asynchronous Middleware Upgrades**: Refactored Express, Fastify, Prisma, and Mongoose middlewares to execute masking pipelines asynchronously, enabling full support for asynchronous custom maskers (such as WebCrypto HMACs).
+- **Asynchronous CLI Support**: Migrated the line-by-line CLI processor to run asynchronously.
+
+### 🛠 Refactors & Fixes
+- Added compiler checks for bracket property indexing (`obj["key"]`) inside JIT functions to support hyphenated keys and numeric paths.
+- Cleaned up unused typescript imports and variables to resolve lint warnings.
+
 ## v4.0.0 - 2026-05-28
 ### 🚀 New Features
 - **TC39 Stage 3 Decorator Support**: Upgraded the `@Mask` decorator from legacy experimental syntax to the standard TC39 Stage 3 decorator syntax. Cleaned up `reflect-metadata` dependency entirely, making Maskify **zero-dependency** by default.

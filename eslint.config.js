@@ -44,6 +44,7 @@ module.exports = [
       '@typescript-eslint/no-require-imports': 'off',
       'no-empty': ['error', { allowEmptyCatch: true }],
       'no-console': 'off',
+      'no-redeclare': 'off',
     },
   },
   {

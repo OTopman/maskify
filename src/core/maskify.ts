@@ -34,9 +34,12 @@ export class MaskifyCore {
    * @param value - The string to mask.
    * @param opts - Masking options.
    */
-  static mask(value: string, opts?: MaskOptions): string {
+  static mask(value: string, opts?: MaskOptions | ((val: string, ctx?: any) => string)): string {
+    if (typeof opts === 'function') {
+      return opts(value);
+    }
     // Merge defaults
-    const options = MaskifyCore.getEffectiveOptions(opts);
+    const options = MaskifyCore.getEffectiveOptions(opts as MaskOptions);
 
     if (options.condition && !options.condition(value, options.context)) {
       return value;
@@ -76,8 +79,11 @@ export class MaskifyCore {
   /**
    * Masks a single value asynchronously (supports async custom/deterministic maskers).
    */
-  static async maskAsync(value: string, opts?: MaskOptions): Promise<string> {
-    const options = MaskifyCore.getEffectiveOptions(opts);
+  static async maskAsync(value: string, opts?: MaskOptions | ((val: string, ctx?: any) => string | Promise<string>)): Promise<string> {
+    if (typeof opts === 'function') {
+      return await opts(value);
+    }
+    const options = MaskifyCore.getEffectiveOptions(opts as MaskOptions);
 
     if (options.condition && !options.condition(value, options.context)) {
       return value;
@@ -132,9 +138,9 @@ export class MaskifyCore {
     const clone = safeClone<T | T[]>(data);
 
     if (Array.isArray(clone)) {
-      clone.forEach((item) => applyAutoStrategy(item, effectiveOptions));
+      clone.forEach((item) => applyAutoStrategy(item, effectiveOptions, MaskifyCore.mask));
     } else {
-      applyAutoStrategy(clone, effectiveOptions);
+      applyAutoStrategy(clone, effectiveOptions, MaskifyCore.mask);
     }
 
     return clone;
@@ -161,10 +167,10 @@ export class MaskifyCore {
 
     if (Array.isArray(clone)) {
       for (const item of clone) {
-        await applyAutoStrategyAsync(item, effectiveOptions);
+        await applyAutoStrategyAsync(item, effectiveOptions, MaskifyCore.maskAsync);
       }
     } else {
-      await applyAutoStrategyAsync(clone, effectiveOptions);
+      await applyAutoStrategyAsync(clone, effectiveOptions, MaskifyCore.maskAsync);
     }
 
     return clone;
