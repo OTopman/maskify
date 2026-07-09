@@ -1,3 +1,4 @@
+import { axiomify } from './axiomify';
 import { express } from './express';
 import { fastify } from './fastify';
 import { mongoose } from './mongoose';
@@ -10,4 +11,5 @@ export const middlewares = {
   mongoose,
   prisma,
   typeorm,
+  axiomify,
 };

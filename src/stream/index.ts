@@ -43,11 +43,11 @@ export class MaskifyStream<T = any> extends Transform {
     }
   }
 
-  override _transform(
+  override async _transform(
     chunk: unknown,
     _encoding: BufferEncoding,
     callback: TransformCallback,
-  ): void {
+  ): Promise<void> {
     try {
       const wasSerialized =
         Buffer.isBuffer(chunk) || typeof chunk === 'string';
@@ -68,9 +68,8 @@ export class MaskifyStream<T = any> extends Transform {
           // leak the raw line. If a schema was configured, the user likely
           // wants structural masking only — pass through untouched.
           if (!this.schema) {
-            this.push(
-              MaskifyCore.mask(str, { ...this.options, autoDetect: true }),
-            );
+            const maskedStr = await MaskifyCore.maskAsync(str, { ...this.options, autoDetect: true });
+            this.push(maskedStr);
             return callback();
           }
           this.push(chunk);
@@ -84,13 +83,13 @@ export class MaskifyStream<T = any> extends Transform {
       }
 
       const masked = this.schema
-        ? MaskifyCore.maskSensitiveFields(
+        ? await MaskifyCore.maskSensitiveFieldsAsync(
             data as object,
             this.schema as any,
             { mode: this.options.mode, defaultMask: this.options },
             this.configOverride,
           )
-        : MaskifyCore.autoMask(data as object, this.options);
+        : await MaskifyCore.autoMaskAsync(data as object, this.options);
 
       this.push(wasSerialized ? JSON.stringify(masked) + '\n' : masked);
       callback();

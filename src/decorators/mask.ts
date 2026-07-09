@@ -1,4 +1,3 @@
-import { MaskOptions } from '../utils';
 
 // Polyfill Symbol.metadata globally if it doesn't exist
 if (typeof (Symbol as any).metadata === 'undefined') {
@@ -13,11 +12,11 @@ export const MASK_METADATA_KEY = Symbol.for('MASK_METADATA');
  * Property decorator using TC39 Stage 3 syntax.
  * Stores masking options in the class metadata under MASK_METADATA_KEY.
  */
-export function Mask(options?: MaskOptions) {
+export function Mask(options?: any) {
   return function (_value: undefined, context: ClassFieldDecoratorContext) {
     const metadata = context.metadata;
     if (metadata) {
-      let maskMeta = metadata[MASK_METADATA_KEY] as Record<string | symbol, MaskOptions> | undefined;
+      let maskMeta = metadata[MASK_METADATA_KEY] as Record<string | symbol, any> | undefined;
       if (!maskMeta) {
         maskMeta = {};
         metadata[MASK_METADATA_KEY] = maskMeta;
@@ -30,7 +29,7 @@ export function Mask(options?: MaskOptions) {
 /**
  * Extracts mask metadata from a target class/constructor or object instance.
  */
-export function getMaskMetadata(target: any): Record<string | symbol, MaskOptions> | null {
+export function getMaskMetadata(target: any): Record<string | symbol, any> | null {
   if (!target) return null;
   const constructor = typeof target === 'function' ? target : target.constructor;
   if (!constructor) return null;

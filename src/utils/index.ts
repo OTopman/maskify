@@ -4,4 +4,6 @@ export * from './config';
 export * from './detectors';
 export * from './errors';
 export * from './paths';
+export * from './schema-builder';
 export * from './types';
+export * from './validator';

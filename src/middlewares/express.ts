@@ -30,11 +30,19 @@ export function express<T = any>(options?: MiddlewareOptions<T>) {
     res.json = (data: unknown) => {
       if (!data || typeof data !== 'object') return originalJson(data);
 
-      const masked = schema
-        ? MaskifyCore.maskSensitiveFields(data as object, schema)
-        : MaskifyCore.autoMask(data as object, globalOptions);
+      Promise.resolve(
+        schema
+          ? MaskifyCore.maskSensitiveFieldsAsync(data as object, schema)
+          : MaskifyCore.autoMaskAsync(data as object, globalOptions)
+      )
+        .then((masked) => {
+          originalJson(masked);
+        })
+        .catch((err) => {
+          next(err);
+        });
 
-      return originalJson(masked);
+      return res;
     };
 
     next();

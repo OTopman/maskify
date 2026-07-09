@@ -1,7 +1,10 @@
-import { AutoMaskOptions, Detectors, MaskableType } from '../../utils';
+import { AutoMaskOptions, Detectors, MaskableType, MaskOptions } from '../../utils';
 import { getCachedRegex } from '../../utils/cache';
-import { MaskifyCore } from '../maskify';
 import { deepVisit, deepVisitAsync } from './traverser';
+
+export type AutoMaskingCallback = (value: string, options: MaskOptions) => string;
+
+export type AutoMaskingCallbackAsync = (value: string, options: MaskOptions) => Promise<string> | string;
 
 const DEFAULT_SENSITIVE_KEYS = [
   'password',
@@ -29,16 +32,12 @@ const DEFAULT_DETECT_TYPES: MaskableType[] = [
   'jwt',
 ];
 
-export function applyAutoStrategy(
-  target: any,
-  options: AutoMaskOptions = {}
-): void {
-  const keysList = options.sensitiveKeys || DEFAULT_SENSITIVE_KEYS;
-  const detectTypes = new Set(options.autoDetectTypes || DEFAULT_DETECT_TYPES);
-
-  // Build a whole-word-ish matcher so "author" doesn't trigger on "auth"
-  // and "secretary" doesn't trigger on "secret". Separators between words
-  // may be underscore, hyphen, dot, or camelCase boundaries.
+/**
+ * Builds a whole-word-ish key matcher so "author" doesn't trigger on "auth"
+ * and "secretary" doesn't trigger on "secret". Separators between words
+ * may be underscore, hyphen, dot, or camelCase boundaries.
+ */
+function buildKeyMatcher(keysList: string[]): (key: string) => boolean {
   const cacheKey = `keys:${keysList.join(',')}`;
   const keyRegex = getCachedRegex(cacheKey, () => {
     const escaped = keysList.map((k) =>
@@ -52,28 +51,35 @@ export function applyAutoStrategy(
     );
   });
 
-  const matchesKey = (key: string) => {
+  return (key: string) => {
     // Split camelCase/PascalCase so "apiKey" resolves via word-boundary match.
     const normalized = key.replace(/([a-z0-9])([A-Z])/g, '$1_$2');
     return keyRegex.test(normalized);
   };
+}
+
+export function applyAutoStrategy(
+  target: any,
+  options: AutoMaskOptions,
+  maskFn: AutoMaskingCallback,
+): void {
+  const keysList = options.sensitiveKeys || DEFAULT_SENSITIVE_KEYS;
+  const detectTypes = new Set(options.autoDetectTypes || DEFAULT_DETECT_TYPES);
+  const matchesKey = buildKeyMatcher(keysList);
 
   deepVisit(target, (key, val, parent) => {
     if (
       matchesKey(key) &&
       ['string', 'number', 'boolean'].includes(typeof val)
     ) {
-      parent[key] = MaskifyCore.mask(String(val), {
-        ...options,
-        type: 'generic',
-      });
+      parent[key] = maskFn(String(val), { ...options, type: 'generic' });
       return;
     }
 
     if (typeof val === 'string') {
       const type = Detectors.detectType(val);
       if (detectTypes.has(type)) {
-        parent[key] = MaskifyCore.mask(val, { ...options, type });
+        parent[key] = maskFn(val, { ...options, type });
       }
     }
   });
@@ -84,45 +90,26 @@ export function applyAutoStrategy(
  */
 export async function applyAutoStrategyAsync(
   target: any,
-  options: AutoMaskOptions = {}
+  options: AutoMaskOptions,
+  maskFn: AutoMaskingCallbackAsync,
 ): Promise<void> {
   const keysList = options.sensitiveKeys || DEFAULT_SENSITIVE_KEYS;
   const detectTypes = new Set(options.autoDetectTypes || DEFAULT_DETECT_TYPES);
-
-  const cacheKey = `keys:${keysList.join(',')}`;
-  const keyRegex = getCachedRegex(cacheKey, () => {
-    const escaped = keysList.map((k) =>
-      k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-    );
-    const boundary = '(?:^|[^a-zA-Z0-9])';
-    const tail = '(?:$|[^a-zA-Z0-9])';
-    return new RegExp(
-      `${boundary}(?:${escaped.join('|')})${tail}`,
-      'i',
-    );
-  });
-
-  const matchesKey = (key: string) => {
-    const normalized = key.replace(/([a-z0-9])([A-Z])/g, '$1_$2');
-    return keyRegex.test(normalized);
-  };
+  const matchesKey = buildKeyMatcher(keysList);
 
   await deepVisitAsync(target, async (key, val, parent) => {
     if (
       matchesKey(key) &&
       ['string', 'number', 'boolean'].includes(typeof val)
     ) {
-      parent[key] = await MaskifyCore.maskAsync(String(val), {
-        ...options,
-        type: 'generic',
-      });
+      parent[key] = await maskFn(String(val), { ...options, type: 'generic' });
       return;
     }
 
     if (typeof val === 'string') {
       const type = Detectors.detectType(val);
       if (detectTypes.has(type)) {
-        parent[key] = await MaskifyCore.maskAsync(val, { ...options, type });
+        parent[key] = await maskFn(val, { ...options, type });
       }
     }
   });

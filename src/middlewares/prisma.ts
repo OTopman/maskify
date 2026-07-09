@@ -32,11 +32,11 @@ export function prisma<T = any>(options?: MiddlewareOptions<T>) {
   const { fields, maskOptions: globalOptions } = config;
   const schema = buildSchemaFromFields(fields, globalOptions);
 
-  const applyMask = (result: any) => {
+  const applyMaskAsync = async (result: any) => {
     if (result == null || typeof result !== 'object') return result;
     return schema
-      ? MaskifyCore.maskSensitiveFields(result as object, schema)
-      : MaskifyCore.autoMask(result as object, globalOptions);
+      ? MaskifyCore.maskSensitiveFieldsAsync(result as object, schema)
+      : MaskifyCore.autoMaskAsync(result as object, globalOptions);
   };
 
   return {
@@ -46,16 +46,16 @@ export function prisma<T = any>(options?: MiddlewareOptions<T>) {
         async $allOperations({ operation, args, query }: PrismaAllOperationsArgs) {
           const result = await query(args);
           if (!INTERCEPTED_OPERATIONS.has(operation)) return result;
-          return applyMask(result);
+          return await applyMaskAsync(result);
         },
       },
       async $queryRaw({ args, query }: any) {
         const result = await query(args);
-        return applyMask(result);
+        return await applyMaskAsync(result);
       },
       async $queryRawUnsafe({ args, query }: any) {
         const result = await query(args);
-        return applyMask(result);
+        return await applyMaskAsync(result);
       },
     },
   };

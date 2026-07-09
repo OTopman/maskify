@@ -1,4 +1,4 @@
-import { Maskify } from '../src';
+import { Maskify, m } from '../src';
 
 const input = {
   user: {
@@ -9,6 +9,17 @@ const input = {
   },
 };
 
+// 1. Modern JIT Schema + Monadic Chain (v6.0+)
+const userSchema = m.object({
+  user: {
+    email: m.email(),
+    phone: m.phone().when((_v, ctx) => ctx?.isAdmin !== true).redact('[HIDDEN_PHONE]'),
+  }
+});
+
+console.log('JIT Schema Output:', userSchema(input, { isAdmin: false }));
+
+// 2. Legacy Dot-Path Schema Modes (Still supported)
 const schema = {
   'user.email': { type: 'email' as const },
   'user.phone': { type: 'phone' as const },
@@ -20,4 +31,4 @@ const allowMode = Maskify.maskSensitiveFields(input, schema, {
   defaultMask: { type: 'generic' },
 });
 
-console.log({ maskMode, allowMode: JSON.stringify(allowMode) });
+console.log({ maskMode, allowMode });

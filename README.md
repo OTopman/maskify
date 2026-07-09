@@ -11,7 +11,7 @@ Production-grade data masking for Node.js, Browsers, and TypeScript. GDPR / HIPA
 - Pre-compiled PII detectors (email, phone, card with Luhn, IP, JWT, URL, address, name)
 - Schema-driven field masking with dot-paths and array wildcards (`users[*].email`)
 - Deterministic HMAC hashing for analytics-safe pseudonymization
-- First-class adapters for **Express**, **Fastify**, **Prisma**, **TypeORM**, **Mongoose**
+- First-class adapters for **Express**, **Fastify**, **Prisma**, **TypeORM**, **Mongoose**, **Axiomify**
 - `@Mask` decorators, `Transform` streams, and a `maskify` CLI for ad-hoc log sanitization
 - Dual ESM / CJS output, typed exports, `sideEffects: false`
 
@@ -40,6 +40,7 @@ Production-grade data masking for Node.js, Browsers, and TypeScript. GDPR / HIPA
     - [Prisma](#prisma)
     - [TypeORM](#typeorm)
     - [Mongoose](#mongoose)
+    - [Axiomify](#axiomify)
   - [Decorators](#decorators)
   - [Zod Schema Integration](#zod-schema-integration)
   - [Asynchronous Masking Pipeline](#asynchronous-masking-pipeline)
@@ -107,6 +108,49 @@ Maskify.maskSensitiveFields(
     'user.cards[*].number': { type: 'card' },
   },
 );
+```
+
+---
+
+## Zod-like Schema Builder & Monadic Maskers (v6.0+)
+
+Maskify v6.0+ introduces a highly performant, type-safe schema builder and monadic maskers under the `m` namespace:
+
+```ts
+import { m } from 'maskify-ts';
+
+// 1. Define schema with exact type inference
+const userSchema = m.object({
+  name: m.name(),
+  email: m.email({ visibleLocalChars: 2 }),
+  website: m.url().when((_val, ctx) => ctx?.isAdmin !== true).redact(),
+});
+
+// Infer the output TypeScript signature
+type MaskedUser = m.infer<typeof userSchema>;
+// Inferred: { name: string; email: string; website: string; }
+
+// 2. Mask data using the compiled schema (JIT compiled for maximum speed)
+const masked = userSchema({
+  name: 'John Doe',
+  email: 'john.doe@example.com',
+  website: 'https://example.com/api?token=secret',
+}, { isAdmin: false });
+// → { name: 'J*** D**', email: 'jo****@e***.com', website: '[REDACTED]' }
+```
+
+### Chainable Combinators
+
+All maskers under the `m` namespace are monadic builders supporting chainable operations:
+
+* **`.when(condition)`**: Evaluates a condition. If it returns false, it falls back to the previous masking step or returns raw input.
+* **`.redact(label?)`**: Replaces the value with a custom redaction label (defaults to `[REDACTED]`).
+* **`.transform(fn)`**: Applies a custom transformation function on the masked output.
+
+```ts
+const secureApiKey = m.generic({ visibleStart: 4 })
+  .when((_val, ctx) => ctx?.environment === 'production')
+  .redact('[HIDDEN_IN_PROD]');
 ```
 
 ---
@@ -346,7 +390,7 @@ app.use(Maskify.middlewares.express({
 Maskify.use(app, { fields: ['email', 'password'] });
 ```
 
-Wraps `res.json` so any JSON response body is masked before being sent to the client.
+Wraps `res.json` to perform asynchronous body masking via Promise chains, forwarding serialization errors to Express `next(err)`.
 
 ### Fastify
 
@@ -364,7 +408,7 @@ await app.register(Maskify.middlewares.fastify, {
 Maskify.use(app, { fields: ['email', 'phone'] }, 'fastify');
 ```
 
-Uses an `onSend` hook, handles both object and string/buffer payloads, and never blocks the response if masking fails.
+Uses a `preSerialization` hook to asynchronously mask JSON payloads, and never blocks the response if masking fails.
 
 ### Prisma
 
@@ -378,11 +422,11 @@ const prisma = new PrismaClient().$extends(
   }),
 );
 
-await prisma.user.findMany(); // email is masked
+await prisma.user.findMany(); // email is masked asynchronously
 await prisma.user.create({ data: { email } }); // write ops are NEVER masked
 ```
 
-Only transforms **read** operations (`findUnique`, `findFirst`, `findMany`, `aggregate`, `groupBy`, `queryRaw`, and their `*OrThrow` siblings). Writes always go through untouched.
+Only transforms **read** operations (`findUnique`, `findFirst`, `findMany`, `aggregate`, `groupBy`, `queryRaw`, and their `*OrThrow` siblings) asynchronously. Writes always go through untouched.
 
 ### TypeORM
 
@@ -417,9 +461,23 @@ UserSchema.plugin(Maskify.middlewares.mongoose, {
 const User = model('User', UserSchema);
 
 const doc = await User.findById(id);
-doc.toJSON();   // masked
-doc.mask();     // explicit helper — same result
+doc.toJSON();        // masked (synchronously)
+doc.mask();          // explicit helper (synchronously)
+await doc.maskAsync(); // explicit helper (asynchronously)
 ```
+
+### Axiomify
+
+```ts
+import { app } from './app'; // an Axiomify instance
+import { Maskify } from 'maskify-ts';
+
+Maskify.middlewares.axiomify(app, {
+  fields: [{ name: 'email', options: { type: 'email' } }],
+});
+```
+
+Installs an `onRequest` hook that wraps `res.send()` so any object/array payload is masked before serialization. Masking is **synchronous only** — Axiomify's `res.send()` writes to the socket before returning, so async custom maskers (e.g. the WebCrypto deterministic masker) aren't supported here; mask those fields in the handler before calling `res.send()`. Never blocks the response if masking fails.
 
 ---
 
@@ -774,7 +832,7 @@ Peer dependencies are all optional — install only the frameworks you actually 
 
 ## Further reading
 
-- **Runnable examples** in [`examples/`](./examples) — basic masking, `autoMask`, `smart`, decorators, streams, and every framework adapter (Express, Fastify, Prisma, TypeORM, Mongoose).
+- **Runnable examples** in [`examples/`](./examples) — basic masking, `autoMask`, `smart`, decorators, streams, and every framework adapter (Express, Fastify, Prisma, TypeORM, Mongoose, Axiomify).
 - **Guides** in [`docs/`](./docs):
   - [Security best practices](./docs/security-best-practices.md)
   - [Performance tuning](./docs/performance-tuning.md)
