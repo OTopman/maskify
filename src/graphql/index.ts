@@ -1,7 +1,13 @@
 import { defaultFieldResolver, GraphQLSchema } from 'graphql';
 import { mapSchema, getDirective, MapperKind } from '@graphql-tools/utils';
-import { Maskify } from '../index';
+import { registerDefaults } from '../core/bootstrap';
+import { MaskifyCore } from '../core/maskify';
 import type { MaskOptions } from '../utils/types';
+
+// Ensure the process-wide registry is populated even when this module is
+// imported directly (e.g. `import { graphqlMask } from 'maskify-ts/graphql'`)
+// without first importing the main entry point. Idempotent.
+registerDefaults();
 
 /**
  * GraphQL schema directive transformer that masks returned field values.
@@ -31,10 +37,10 @@ export function graphqlMask(
             return Promise.all(
               result.map(async (item) => {
                 if (typeof item === 'string') {
-                  return Maskify.maskAsync(item, maskOptions);
+                  return MaskifyCore.maskAsync(item, maskOptions);
                 }
                 if (item && typeof item === 'object') {
-                  return Maskify.autoMaskAsync(item, maskOptions as any);
+                  return MaskifyCore.autoMaskAsync(item, maskOptions as any);
                 }
                 return item;
               })
@@ -42,11 +48,11 @@ export function graphqlMask(
           }
 
           if (typeof result === 'string') {
-            return Maskify.maskAsync(result, maskOptions);
+            return MaskifyCore.maskAsync(result, maskOptions);
           }
 
           if (result && typeof result === 'object') {
-            return Maskify.autoMaskAsync(result, maskOptions as any);
+            return MaskifyCore.autoMaskAsync(result, maskOptions as any);
           }
 
           return result;

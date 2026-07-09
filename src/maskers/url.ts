@@ -1,12 +1,15 @@
-import { MaskOptions } from '../utils';
+import { createDualModeMasker, MaskContext } from '../core/masker';
 
-export function maskUrl(urlStr: string, opts: MaskOptions): string {
+export interface UrlOptions {
+  maskChar?: string;
+}
+
+function runUrlMasking(urlStr: string, opts: UrlOptions, _ctx: MaskContext): string {
   if (!urlStr) return '';
 
   try {
     const isRelative = !urlStr.startsWith('http://') && !urlStr.startsWith('https://');
     if (isRelative && !urlStr.startsWith('/')) {
-      // Not an absolute URL and not a path — return as-is
       return urlStr;
     }
     const url = isRelative ? new URL(urlStr, 'http://localhost') : new URL(urlStr);
@@ -33,7 +36,8 @@ export function maskUrl(urlStr: string, opts: MaskOptions): string {
 
     return isRelative ? url.pathname + url.search : url.toString();
   } catch {
-    // If not a valid URL, return as is or treat as generic string
     return urlStr;
   }
 }
+
+export const maskUrl = createDualModeMasker(runUrlMasking);

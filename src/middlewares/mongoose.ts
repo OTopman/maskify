@@ -11,9 +11,19 @@ export function mongoose<T = any>(schema: any, options: MiddlewareOptions<T> = {
       ? MaskifyCore.maskSensitiveFields(payload, maskSchema)
       : MaskifyCore.autoMask(payload, globalOptions);
 
+  const applyMaskAsync = async (payload: object) =>
+    maskSchema
+      ? MaskifyCore.maskSensitiveFieldsAsync(payload, maskSchema)
+      : MaskifyCore.autoMaskAsync(payload, globalOptions);
+
   schema.methods.mask = function () {
     const plain = typeof this.toObject === 'function' ? this.toObject() : this;
     return applyMask(plain);
+  };
+
+  schema.methods.maskAsync = async function () {
+    const plain = typeof this.toObject === 'function' ? this.toObject() : this;
+    return await applyMaskAsync(plain);
   };
 
   const existing = schema.get('toJSON') || {};

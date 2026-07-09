@@ -1,5 +1,5 @@
+import { createDualModeMasker, MaskContext } from '../core/masker';
 import { MaskifyConfigError } from '../utils/errors';
-import type { MaskOptions } from '../utils/types';
 
 // Safe Node.js crypto loader to avoid bundler errors in browser/edge environments
 let nodeCrypto: any = null;
@@ -10,19 +10,12 @@ try {
   // Ignore
 }
 
-export interface DeterministicOptions extends MaskOptions {
-  /**
-   * REQUIRED: Secret key for HMAC hashing.
-   * MUST be stored in environment variable, NEVER committed to version control.
-   */
+export interface DeterministicOptions {
   secret: string;
   algorithm?: 'sha256' | 'sha512';
   length?: number; // Default: 12 chars of hex output
 }
 
-/**
- * Helper using standard Web Crypto API for HMAC hashing
- */
 async function webCryptoHmac(
   algorithm: 'sha256' | 'sha512',
   secret: string,
@@ -48,21 +41,13 @@ async function webCryptoHmac(
   );
 
   const signature = await cryptoObj.subtle.sign('HMAC', key, data);
-  
-  // Convert signature to hex string
+
   const hashArray = Array.from(new Uint8Array(signature));
   const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   return hashHex;
 }
 
-/**
- * Generates a consistent, non-reversible hash for analytics/tracking (Synchronous).
- * Only supported in Node.js.
- */
-export function maskDeterministic(
-  value: string,
-  opts: DeterministicOptions = {} as any,
-): string {
+function runDeterministicSync(value: string, opts: DeterministicOptions, _ctx: MaskContext): string {
   if (!opts || !opts.secret || opts.secret.length < 16) {
     throw new MaskifyConfigError(
       'maskDeterministic requires a "secret" of at least 16 characters',
@@ -97,14 +82,7 @@ export function maskDeterministic(
   );
 }
 
-/**
- * Generates a consistent, non-reversible hash for analytics/tracking (Asynchronous).
- * Supported in both Node.js and Browser environments.
- */
-export async function maskDeterministicAsync(
-  value: string,
-  opts: DeterministicOptions = {} as any,
-): Promise<string> {
+async function runDeterministicAsync(value: string, opts: DeterministicOptions, _ctx: MaskContext): Promise<string> {
   if (!opts || !opts.secret || opts.secret.length < 16) {
     throw new MaskifyConfigError(
       'maskDeterministicAsync requires a "secret" of at least 16 characters',
@@ -125,12 +103,10 @@ export async function maskDeterministicAsync(
     );
   }
 
-  // Use Web Crypto which is globally available in modern environments
   try {
     const hex = await webCryptoHmac(algorithm, secret, value);
     return hex.substring(0, length);
   } catch (e: any) {
-    // Fall back to Node crypto if Web Crypto is somehow not active (e.g. older Node)
     if (nodeCrypto && typeof nodeCrypto.createHmac === 'function') {
       return nodeCrypto
         .createHmac(algorithm, secret)
@@ -141,3 +117,8 @@ export async function maskDeterministicAsync(
     throw e;
   }
 }
+
+export const maskDeterministic = createDualModeMasker(runDeterministicSync);
+export const maskDeterministicAsync = createDualModeMasker<DeterministicOptions, Promise<string>>(
+  runDeterministicAsync,
+);

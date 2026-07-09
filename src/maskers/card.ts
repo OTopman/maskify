@@ -1,24 +1,22 @@
-import { MaskOptions } from '../utils';
-import { DEFAULT_MASK_OPTIONS } from '../utils/defaults';
+import { createDualModeMasker, MaskContext } from '../core/masker';
 
-/**
- * Masks credit card numbers, preserving the last 4 digits.
- * @param card - The raw card number.
- * @param options - Configuration for masking characters.
- */
-export function maskCard(card: string, options: MaskOptions = {}): string {
-  const { maxAsterisks, maskChar } = { ...DEFAULT_MASK_OPTIONS, ...options };
+export interface CardOptions {
+  maxAsterisks?: number;
+  maskChar?: string;
+}
 
+function runCardMasking(card: string, opts: CardOptions, _ctx: MaskContext): string {
+  const { maxAsterisks = 4, maskChar = '*' } = opts;
   if (!card) return '';
 
   const digitsOnly = card.replace(/\D/g, '');
-  // Split into groups of 4 for formatting
   const groups = digitsOnly.match(/.{1,4}/g) || [];
 
   const maskedGroups = groups.map((group, i) =>
-    // Preserve first and last group, mask the middle ones
-    i === 0 || i === groups.length - 1 ? group : maskChar!.repeat(maxAsterisks!)
+    i === 0 || i === groups.length - 1 ? group : maskChar.repeat(maxAsterisks)
   );
 
   return maskedGroups.join(' ');
 }
+
+export const maskCard = createDualModeMasker(runCardMasking, { coerce: true });

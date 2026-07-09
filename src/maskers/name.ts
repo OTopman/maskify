@@ -1,7 +1,13 @@
-import { MaskOptions } from '../utils';
+import { createDualModeMasker, MaskContext } from '../core/masker';
 
-export function maskName(value: string, opts: MaskOptions): string {
+export interface NameOptions {
+  maskChar?: string;
+  maxAsterisks?: number;
+}
+
+function runNameMasking(value: string, opts: NameOptions, _ctx: MaskContext): string {
   const { maskChar = '*', maxAsterisks = 4 } = opts;
+  if (!value) return '';
   return value
     .split(/\s+/)
     .map((word) =>
@@ -11,3 +17,5 @@ export function maskName(value: string, opts: MaskOptions): string {
     )
     .join(' ');
 }
+
+export const maskName = createDualModeMasker(runNameMasking);

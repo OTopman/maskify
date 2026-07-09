@@ -1,56 +1,42 @@
-import { MaskOptions } from '../utils';
-import { DEFAULT_MASK_OPTIONS } from '../utils/defaults';
+import { createDualModeMasker, MaskContext } from '../core/masker';
 import { validateInput } from '../utils/validator';
 
-/**
- * Masks an email address while preserving its recognisable structure.
- *
- * Example:
- *   "temitope.okunlola@gmail.com" → "temi****@g***.com"
- *   "a@b.com" → "*@b.com"
- *
- * @param email - The email address to mask.
- * @param options - Masking options.
- */
-export function maskEmail(
-  email: string,
-  options: Pick<
-    MaskOptions,
-    | 'maxAsterisks'
-    | 'maskChar'
-    | 'visibleStart'
-    | 'visibleEnd'
-    | 'strict'
-    | 'maxLength'
-    | 'allowEmpty'
-  > = {}
-): string {
+export interface EmailOptions {
+  visibleLocalChars?: number;
+  visibleDomainChars?: number;
+  /** @deprecated use visibleLocalChars instead */
+  visibleStart?: number;
+  /** @deprecated use visibleDomainChars instead */
+  visibleEnd?: number;
+  maxAsterisks?: number;
+  maskChar?: string;
+  strict?: boolean;
+  maxLength?: number;
+  allowEmpty?: boolean;
+}
+
+function runEmailMasking(email: string, opts: EmailOptions, ctx: MaskContext): string {
+  const visibleLocalChars = opts.visibleLocalChars ?? opts.visibleStart ?? 1;
+  const visibleDomainChars = opts.visibleDomainChars ?? opts.visibleEnd ?? 0;
+  const {
+    maxAsterisks = 4,
+    maskChar = '*',
+    strict = false,
+    maxLength,
+    allowEmpty,
+  } = opts;
+
   const validation = validateInput(email, {
-    strict: options.strict,
-    maxLength: options.maxLength,
-    allowEmpty: options.allowEmpty,
+    strict: strict || ctx.strict,
+    maxLength,
+    allowEmpty,
   });
   if (!validation.valid) {
-    // Never return raw input on validation failure — that would leak PII
-    // when the caller passed something unexpected (e.g. a non-string).
     return '';
   }
   const normalized = validation.sanitized ?? '';
   if (!normalized) return '';
   if (!normalized.includes('@')) return normalized;
-
-  const config = {
-    ...DEFAULT_MASK_OPTIONS,
-    visibleStart: 1,
-    ...options,
-  };
-
-  const {
-    maxAsterisks = 4,
-    visibleStart = 1,
-    visibleEnd = 0,
-    maskChar = '*',
-  } = config;
 
   const [localPart, domainPart] = normalized.split('@');
   if (!localPart || !domainPart) return email;
@@ -58,28 +44,25 @@ export function maskEmail(
   const [domainName, ...rest] = domainPart.split('.');
   const domainExt = rest.join('.') || '';
 
-  // --- Mask local part ---
-  const safeVisibleStart = Math.min(visibleStart, localPart.length - 1);
+  // Mask local part
+  const safeLocalVisible = Math.min(visibleLocalChars, localPart.length - 1);
   const maskedLocalCount = Math.min(
     maxAsterisks,
-    Math.max(localPart.length - safeVisibleStart, 3)
+    Math.max(localPart.length - safeLocalVisible, 3)
   );
+  const localStart = localPart.slice(0, safeLocalVisible);
+  const maskedLocal = `${localStart}${maskChar.repeat(maskedLocalCount)}`;
 
-  const start = localPart.slice(0, safeVisibleStart);
-  const maskedLocal = `${start}${maskChar.repeat(maskedLocalCount)}`;
-
-  // --- Mask domain name ---
-  const safeVisibleEnd = Math.max(1, Math.min(visibleEnd || 1, domainName.length - 1));
+  // Mask domain name
+  const safeDomainVisible = Math.max(1, Math.min(visibleDomainChars || 1, domainName.length - 1));
   const maskedDomainCount = Math.min(
     3,
-    Math.max(domainName.length - safeVisibleEnd, 1)
+    Math.max(domainName.length - safeDomainVisible, 1)
   );
+  const domainStart = domainName.slice(0, safeDomainVisible);
+  const maskedDomain = `${domainStart}${maskChar.repeat(maskedDomainCount)}`;
 
-  const domainVisibleStart = domainName.slice(0, safeVisibleEnd);
-  const maskedDomain = `${domainVisibleStart}${maskChar.repeat(
-    maskedDomainCount
-  )}`;
-
-  // --- Combine ---
   return `${maskedLocal}@${maskedDomain}${domainExt ? `.${domainExt}` : ''}`;
 }
+
+export const maskEmail = createDualModeMasker(runEmailMasking);

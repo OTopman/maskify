@@ -1,4 +1,4 @@
-import { MaskerRegistry } from '../../src/core/registry/registry';
+import { MaskerRegistry } from '../../src/core/registry';
 
 describe('MaskerRegistry', () => {
   it('registers and retrieves maskers case-insensitively', () => {

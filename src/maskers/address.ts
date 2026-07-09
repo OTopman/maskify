@@ -1,7 +1,13 @@
-import { MaskOptions } from '../utils';
+import { createDualModeMasker, MaskContext } from '../core/masker';
 
-export function maskAddress(value: string, opts: MaskOptions): string {
+export interface AddressOptions {
+  maskChar?: string;
+  maxAsterisks?: number;
+}
+
+function runAddressMasking(value: string, opts: AddressOptions, _ctx: MaskContext): string {
   const { maskChar = '*', maxAsterisks = 4 } = opts;
+  if (!value) return '';
   return value
     .replace(/\d+/g, maskChar.repeat(3))
     .replace(/\b(\w{3,})\b/g, (m) => {
@@ -11,3 +17,5 @@ export function maskAddress(value: string, opts: MaskOptions): string {
       );
     });
 }
+
+export const maskAddress = createDualModeMasker(runAddressMasking);
