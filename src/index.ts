@@ -10,7 +10,17 @@ import { maskDeterministic, maskDeterministicAsync } from './maskers/determinist
 import { middlewares as _middlewares } from './middlewares';
 import type { AutoMaskOptions, MaskOptions, MiddlewareOptions, Paths } from './utils';
 
-import { InferMasker, object as schemaObject } from './core/schema';
+import {
+  InferMasker,
+  array as schemaArray,
+  discriminatedUnion as schemaDiscriminatedUnion,
+  nullable as schemaNullable,
+  nullish as schemaNullish,
+  object as schemaObject,
+  objectAsync as schemaObjectAsync,
+  optional as schemaOptional,
+  union as schemaUnion,
+} from './core/schema';
 import { maskAddress as schemaAddress } from './maskers/address';
 import { maskCard as schemaCard } from './maskers/card';
 import { maskDeterministic as schemaDeterministic, maskDeterministicAsync as schemaDeterministicAsync } from './maskers/deterministic';
@@ -37,22 +47,34 @@ export { defineConfig, GlobalConfigLoader } from './utils/config';
 export { MaskifyConfigError, MaskifyError, MaskifyValidationError } from './utils/errors';
 export type { AutoMaskOptions, MaskOptions, MiddlewareOptions, Paths };
 
-  export { createMasker, type MaskContext, type Masker } from './core/masker';
-  export { object, ObjectMasker, type ObjectMaskerCallable } from './core/schema';
-  export { maskAddress, type AddressOptions } from './maskers/address';
-  export { maskCard, type CardOptions } from './maskers/card';
-  export { maskDeterministic, maskDeterministicAsync, type DeterministicOptions } from './maskers/deterministic';
-  export { maskEmail, type EmailOptions } from './maskers/email';
-  export { maskGeneric, type GenericOptions } from './maskers/generic';
-  export { maskIp, type IpOptions } from './maskers/ip';
-  export { maskJwt, type JwtOptions } from './maskers/jwt';
-  export { maskName, type NameOptions } from './maskers/name';
-  export { maskPattern, type PatternOptions } from './maskers/pattern';
-  export { maskPhone, type PhoneOptions } from './maskers/phone';
-  export { maskUrl, type UrlOptions } from './maskers/url';
+export { createMasker, type MaskContext, type Masker } from './core/masker';
+export {
+  array, ArrayMasker, AsyncObjectMasker, discriminatedUnion, nullable,
+  nullish, object,
+  objectAsync, ObjectMasker, optional, union, type ArrayMaskerCallable, type AsyncObjectMaskerCallable, type DiscriminatedUnionMaskerCallable, type NullableMaskerCallable,
+  type NullishMaskerCallable, type ObjectMaskerCallable, type OptionalMaskerCallable, type UnionMaskerCallable
+} from './core/schema';
+export { maskAddress, type AddressOptions } from './maskers/address';
+export { maskCard, type CardOptions } from './maskers/card';
+export { maskDeterministic, maskDeterministicAsync, type DeterministicOptions } from './maskers/deterministic';
+export { maskEmail, type EmailOptions } from './maskers/email';
+export { maskGeneric, type GenericOptions } from './maskers/generic';
+export { maskIp, type IpOptions } from './maskers/ip';
+export { maskJwt, type JwtOptions } from './maskers/jwt';
+export { maskName, type NameOptions } from './maskers/name';
+export { maskPattern, type PatternOptions } from './maskers/pattern';
+export { maskPhone, type PhoneOptions } from './maskers/phone';
+export { maskUrl, type UrlOptions } from './maskers/url';
 
 export const m = {
   object: schemaObject,
+  objectAsync: schemaObjectAsync,
+  array: schemaArray,
+  optional: schemaOptional,
+  nullable: schemaNullable,
+  nullish: schemaNullish,
+  discriminatedUnion: schemaDiscriminatedUnion,
+  union: schemaUnion,
   email: schemaEmail,
   card: schemaCard,
   phone: schemaPhone,
@@ -70,6 +92,8 @@ export const m = {
 export namespace m {
   export type infer<T> = InferMasker<T>;
 }
+
+const _m = m;
 
 // Expose Zod integration (Zod is an optional dependency)
 export { zodMask, zodMaskField } from './zod';
@@ -111,6 +135,7 @@ export namespace Maskify {
   export const middlewares = _middlewares;
   export const registry = _registry;
   export const graphql = graphqlMask;
+  export const m = _m;
 
   /**
    * Returns a new instance with all `@Mask`-decorated properties replaced by
