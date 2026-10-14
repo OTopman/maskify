@@ -11,4 +11,7 @@ export function registerDefaults() {
   registry.register('url', maskers.maskUrl);
   registry.register('address', maskers.maskAddress);
   registry.register('name', maskers.maskName);
+  registry.register('iban', maskers.maskIban);
+  registry.register('ssn', maskers.maskSsn);
+  registry.register('secret', maskers.maskSecret);
 }

@@ -83,4 +83,36 @@ describe('Smart Compiler (Maskify.smart)', () => {
     const result = Maskify.smart(safeLog);
     expect(result).toBe(safeLog);
   });
+
+  it('should detect and mask valid IBAN in unstructured text', () => {
+    const log = 'Wire transfer received for IBAN GB82 WEST 1234 5698 7654 32 confirmed.';
+    const result = Maskify.smart(log);
+    expect(result).toBe('Wire transfer received for IBAN GB82 **** **** **** **54 32 confirmed.');
+  });
+
+  it('should not mask random uppercase sequences that fail IBAN checksum', () => {
+    const log = 'Product SKU GB99WEST12345678901234 processed';
+    const result = Maskify.smart(log);
+    expect(result).toBe('Product SKU GB99WEST12345678901234 processed');
+  });
+
+  it('should detect and mask US SSN in unstructured text', () => {
+    const log = 'Customer tax ID 123-45-6789 verified.';
+    const result = Maskify.smart(log);
+    expect(result).toBe('Customer tax ID ***-**-6789 verified.');
+  });
+
+  it('should detect and mask AWS access keys and GitHub tokens in error logs', () => {
+    const log = 'FATAL: Error with AWS key AKIAIOSFODNN7EXAMPLE using token ghp_1234567890abcdefghijklmnopqrstuvwxyz';
+    const result = Maskify.smart(log);
+    expect(result).toContain('AKIA****************');
+    expect(result).toContain('ghp_************************************');
+  });
+
+  it('should detect and redact private key blocks in stack traces', () => {
+    const log = 'Key dump:\n-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0...';
+    const result = Maskify.smart(log);
+    expect(result).toContain('[REDACTED_PRIVATE_KEY]');
+  });
 });
+

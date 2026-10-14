@@ -8,7 +8,7 @@ Production-grade data masking for Node.js, Browsers, and TypeScript. GDPR / HIPA
 [![Build Status](https://github.com/OTopman/maskify/actions/workflows/test.yml/badge.svg)](https://github.com/OTopman/maskify/actions)
 
 
-- Pre-compiled PII detectors (email, phone, card with Luhn, IP, JWT, URL, address, name)
+- Pre-compiled PII detectors (email, phone, card with Luhn, IBAN with ISO 7064, SSN, cloud/API secrets, IP, JWT, URL, address, name)
 - Schema-driven field masking with dot-paths and array wildcards (`users[*].email`)
 - Deterministic HMAC hashing for analytics-safe pseudonymization
 - First-class adapters for **Express**, **Fastify**, **Prisma**, **TypeORM**, **Mongoose**, **Axiomify**
@@ -357,12 +357,16 @@ Maskify.maskClass(new User());
 ---
 
 ## Supported types
+ 
+`MaskableType = 'email' | 'phone' | 'card' | 'address' | 'name' | 'generic' | 'ip' | 'jwt' | 'url' | 'iban' | 'ssn' | 'secret'`
 
-`MaskableType = 'email' | 'phone' | 'card' | 'address' | 'name' | 'generic' | 'ip' | 'jwt' | 'url'`
+Detection order (most specific → least): `jwt → secret → email → iban (ISO 7064) → card (Luhn) → ssn (SSA) → ip → phone → url → address → name → generic`.
 
-Detection order (most specific → least): `jwt → email → ip → card (Luhn) → phone → url → address → name → generic`.
+- **IBAN detection** runs the **ISO 7064 Mod 97-10** checksum algorithm to avoid false positives.
+- **Card detection** runs the **Luhn mod-10** checksum to avoid masking plausible-looking but non-card numbers.
+- **SSN detection** validates against Social Security Administration rules (area/group/serial checks).
+- **Secret detection** identifies and masks AWS keys, GitHub tokens, Stripe API keys, Bearer tokens, and private keys.
 
-Card detection runs the **Luhn mod-10** checksum to avoid masking plausible-looking but non-card numbers.
 
 ---
 

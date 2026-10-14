@@ -38,10 +38,23 @@ export const PATTERNS = {
   // Name characters (Unicode letters, spaces, hyphens, apostrophes)
   NAME_CHARS: /^[\p{L}\s.\-']+$/u,
 
+  // IBAN: 2-letter country code + 2 check digits + 11-30 alphanumeric characters
+  IBAN: /^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/,
+
+  // SSN: 3 digits - 2 digits - 4 digits (with area/group/serial checks)
+  SSN: /^(?!000|666|9\d{2})\d{3}[-\s]?(?!00)\d{2}[-\s]?(?!0000)\d{4}$/,
+
+  // Cloud secrets and tokens
+  SECRET_AWS: /\b(?:AKIA|ASIA|AROA)[0-9A-Z]{16}\b/,
+  SECRET_GITHUB: /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,255}\b|\bgithub_pat_[A-Za-z0-9_]{82}\b/,
+  SECRET_STRIPE: /\b(?:sk|pk|rk)_(?:live|test)_[0-9a-zA-Z]{24,99}\b/,
+  SECRET_BEARER: /\bBearer\s+(?!eyJ)[A-Za-z0-9\-._~+/]+=*\b/,
+  SECRET_PRIVATE_KEY: /-----BEGIN[ A-Z0-9_-]+PRIVATE KEY-----/,
+
   // Sensitive field names — anchored to the *whole* key so "author" doesn't
   // fall into "auth" and "secretary" doesn't fall into "secret".
   SENSITIVE_KEYS:
-    /^(?:password|passwd|pwd|secret|token|api[_-]?key|auth|authorization|credential|ssn|sin|nin|credit[_-]?card|card[_-]?number|cvv|cvc|pin|otp|access[_-]?token|refresh[_-]?token)$/i,
+    /^(?:password|passwd|pwd|secret|token|api[_-]?key|auth|authorization|credential|ssn|sin|nin|iban|bban|credit[_-]?card|card[_-]?number|cvv|cvc|pin|otp|access[_-]?token|refresh[_-]?token)$/i,
 } as const;
 
 // Freeze to prevent runtime modification
