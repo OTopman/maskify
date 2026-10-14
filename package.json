@@ -189,6 +189,9 @@
   "engines": {
     "node": ">=18.0.0"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "sideEffects": [
     "./dist/esm/index.js",
     "./dist/cjs/index.js"
