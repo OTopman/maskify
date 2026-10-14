@@ -6,6 +6,16 @@
 All notable changes to this project will be documented in this file.
 
 
+## v6.1.0 - 2026-10-14
+### 🚀 New Features
+- **Async JIT Fast-Path (`m.objectAsync` and `.async()`)**: Added dynamic compilation of asynchronous flat functions via `%AsyncFunction%`. Seamlessly handles asynchronous custom maskers (e.g. WebCrypto HMACs, remote tokenization vaults) across fields and array items via concurrent `Promise.all` evaluation.
+- **Explicit Array Combinator (`m.array`)**: Added `m.array(schema)` for defining lists of primitives (`m.array(m.email())`) and arrays of nested objects (`m.array({ card: m.card() })`) with full JIT speed and automatic batch mapping.
+- **Nullable / Optional Modifiers (`m.optional`, `m.nullable`, `m.nullish`)**: Added explicit schema modifiers that guard execution and provide precise TypeScript inference (`T | undefined`, `T | null`, `T | null | undefined`) without invoking masking logic on nullish properties.
+- **Discriminated Unions (`m.discriminatedUnion`)**: Added $O(1)$ constant-time dispatch for polymorphic event objects, audit messages, and multi-tenant payloads based on discriminator keys (e.g. `'type'`).
+- **Union Combinator (`m.union`)**: Added declarative multi-schema fallback matching with predicate and condition awareness.
+- **Schema Composition Utilities (`.extend`, `.pick`, `.omit`)**: `ObjectMasker` and `AsyncObjectMasker` now support chaining `.extend(schema)`, `.pick(...keys)`, and `.omit(...keys)` for clean schema inheritance and sub-schema extraction.
+- **Enhanced Type Inference (`m.infer<T>`)**: Comprehensive TypeScript inference for arrays, optional/nullable fields, discriminated unions, and composed schemas.
+
 ## v6.0.0 - 2026-06-17
 ### 🚀 New Features
 - **Axiomify middleware**: Added `Maskify.middlewares.axiomify(app, options)`, an `onRequest`-hook adapter for the [Axiomify](https://github.com/OTopman/axiomify) framework that masks object/array response payloads before `res.send()` serializes them. Masking is synchronous only — Axiomify's `res.send()` writes to the socket before returning, so async custom maskers aren't supported through this adapter; mask those fields in the handler before calling `res.send()`.

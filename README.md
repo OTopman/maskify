@@ -153,6 +153,83 @@ const secureApiKey = m.generic({ visibleStart: 4 })
   .redact('[HIDDEN_IN_PROD]');
 ```
 
+### Schema Combinators & Composition (v6.1+)
+
+Maskify v6.1+ adds declarative combinators and composition helpers to `m`:
+
+#### 1. Arrays (`m.array`)
+Explicit array schemas for primitive lists or arrays of objects:
+```ts
+const userSchema = m.object({
+  emails: m.array(m.email()),
+  orders: m.array({
+    card: m.card(),
+    amount: m.generic(),
+  }),
+});
+```
+
+#### 2. Optional, Nullable & Nullish Modifiers
+Control masking execution for nullable or omitted fields with exact TypeScript inference:
+```ts
+const profileSchema = m.object({
+  backupEmail: m.optional(m.email()),   // Infer: string | undefined
+  taxId: m.nullable(m.generic()),       // Infer: string | null
+  secondaryPhone: m.nullish(m.phone()), // Infer: string | null | undefined
+});
+```
+
+#### 3. Discriminated Unions (`m.discriminatedUnion`)
+High-performance $O(1)$ dispatch for polymorphic events, audit trails, and multi-tenant payloads:
+```ts
+const eventSchema = m.discriminatedUnion('type', {
+  user_signup: m.object({
+    email: m.email(),
+    phone: m.phone(),
+  }),
+  payment_processed: m.object({
+    card: m.card(),
+  }),
+});
+```
+
+#### 4. Schema Composition (`.extend`, `.pick`, `.omit`)
+Easily extend or slice existing schemas:
+```ts
+const baseUser = m.object({
+  id: m.generic(),
+  email: m.email(),
+  phone: m.phone(),
+});
+
+// Extend with additional or overridden fields
+const adminUser = baseUser.extend({
+  card: m.card(),
+  role: m.generic(),
+});
+
+// Sub-schemas
+const contactOnly = baseUser.pick('email', 'phone');
+const publicUser = baseUser.omit('phone');
+```
+
+#### 5. Async JIT Fast-Path (`m.objectAsync` and `.async()`)
+Compile asynchronous JIT functions that natively handle WebCrypto HMACs, async custom maskers, and remote vaults:
+```ts
+const asyncSchema = m.objectAsync({
+  email: m.email(),
+  token: async (val) => await externalVault.tokenize(val),
+  orders: m.array({
+    card: m.card(),
+    tag: async (val) => await tagService.resolve(val),
+  }),
+});
+
+// Or convert a sync schema to async
+const asyncCompiled = baseUser.async();
+const result = await asyncSchema(payload);
+```
+
 ---
 
 ## Core API
