@@ -22,6 +22,8 @@ const DEFAULT_SENSITIVE_KEYS = [
   'ssn',
   'social_security',
   'credit_card',
+  'iban',
+  'bban',
 ];
 
 const DEFAULT_DETECT_TYPES: MaskableType[] = [
@@ -30,6 +32,9 @@ const DEFAULT_DETECT_TYPES: MaskableType[] = [
   'card',
   'ip',
   'jwt',
+  'iban',
+  'ssn',
+  'secret',
 ];
 
 /**

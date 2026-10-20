@@ -26,11 +26,14 @@ import { maskCard as schemaCard } from './maskers/card';
 import { maskDeterministic as schemaDeterministic, maskDeterministicAsync as schemaDeterministicAsync } from './maskers/deterministic';
 import { maskEmail as schemaEmail } from './maskers/email';
 import { maskGeneric as schemaGeneric } from './maskers/generic';
+import { maskIban as schemaIban } from './maskers/iban';
 import { maskIp as schemaIp } from './maskers/ip';
 import { maskJwt as schemaJwt } from './maskers/jwt';
 import { maskName as schemaName } from './maskers/name';
 import { maskPattern as schemaPattern } from './maskers/pattern';
 import { maskPhone as schemaPhone } from './maskers/phone';
+import { maskSecret as schemaSecret } from './maskers/secret';
+import { maskSsn as schemaSsn } from './maskers/ssn';
 import { maskUrl as schemaUrl } from './maskers/url';
 
 // Populate the process-wide registry with the built-in maskers.
@@ -59,11 +62,14 @@ export { maskCard, type CardOptions } from './maskers/card';
 export { maskDeterministic, maskDeterministicAsync, type DeterministicOptions } from './maskers/deterministic';
 export { maskEmail, type EmailOptions } from './maskers/email';
 export { maskGeneric, type GenericOptions } from './maskers/generic';
+export { isValidIban, maskIban, type IbanOptions } from './maskers/iban';
 export { maskIp, type IpOptions } from './maskers/ip';
 export { maskJwt, type JwtOptions } from './maskers/jwt';
 export { maskName, type NameOptions } from './maskers/name';
 export { maskPattern, type PatternOptions } from './maskers/pattern';
 export { maskPhone, type PhoneOptions } from './maskers/phone';
+export { maskSecret, type SecretOptions } from './maskers/secret';
+export { isValidSsn, maskSsn, type SsnOptions } from './maskers/ssn';
 export { maskUrl, type UrlOptions } from './maskers/url';
 
 export const m = {
@@ -85,6 +91,9 @@ export const m = {
   jwt: schemaJwt,
   name: schemaName,
   url: schemaUrl,
+  iban: schemaIban,
+  ssn: schemaSsn,
+  secret: schemaSecret,
   generic: schemaGeneric,
   pattern: schemaPattern,
 };
@@ -136,6 +145,10 @@ export namespace Maskify {
   export const registry = _registry;
   export const graphql = graphqlMask;
   export const m = _m;
+  export const iban = schemaIban;
+  export const ssn = schemaSsn;
+  export const secret = schemaSecret;
+
 
   /**
    * Returns a new instance with all `@Mask`-decorated properties replaced by

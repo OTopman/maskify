@@ -1,6 +1,6 @@
 {
   "name": "maskify-ts",
-  "version": "6.1.0",
+  "version": "6.2.0",
   "description": "Production-grade data masking for Node.js — GDPR/HIPAA compliant, type-safe, high-performance",
   "type": "commonjs",
   "main": "./dist/cjs/index.js",
@@ -17,6 +17,16 @@
       "types": "./dist/types/stream/index.d.ts",
       "import": "./dist/esm/stream/index.js",
       "require": "./dist/cjs/stream/index.js"
+    },
+    "./middlewares": {
+      "types": "./dist/types/middlewares/index.d.ts",
+      "import": "./dist/esm/middlewares/index.js",
+      "require": "./dist/cjs/middlewares/index.js"
+    },
+    "./middlewares/axiomify": {
+      "types": "./dist/types/middlewares/axiomify.d.ts",
+      "import": "./dist/esm/middlewares/axiomify.js",
+      "require": "./dist/cjs/middlewares/axiomify.js"
     },
     "./middlewares/express": {
       "types": "./dist/types/middlewares/express.d.ts",

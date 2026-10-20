@@ -1,4 +1,6 @@
 import { PATTERNS } from '../core/patterns/definitions';
+import { isValidIban } from '../maskers/iban';
+import { isValidSsn } from '../maskers/ssn';
 import type { MaskableType } from './types';
 
 /**
@@ -34,6 +36,17 @@ export const Detectors = {
     return passesLuhn(v.replace(/[\s-]/g, ''));
   },
 
+  isIban: (v: string): boolean => isValidIban(v),
+
+  isSsn: (v: string): boolean => isValidSsn(v),
+
+  isSecret: (v: string): boolean =>
+    PATTERNS.SECRET_AWS.test(v) ||
+    PATTERNS.SECRET_GITHUB.test(v) ||
+    PATTERNS.SECRET_STRIPE.test(v) ||
+    PATTERNS.SECRET_BEARER.test(v) ||
+    PATTERNS.SECRET_PRIVATE_KEY.test(v),
+
   isAddress: (v: string): boolean =>
     PATTERNS.ADDRESS_START.test(v) && PATTERNS.ADDRESS_SUFFIX.test(v),
 
@@ -52,16 +65,19 @@ export const Detectors = {
 
   /**
    * Detect the type of a string value using pre-compiled patterns.
-   * Order matters: more specific patterns first so cards don't lose to phone.
+   * Order matters: more specific patterns first so cards/IBAN/SSN don't lose to phone.
    */
   detectType(value: string): MaskableType {
     const trimmed = value.trim();
     if (!trimmed) return 'generic';
 
     if (Detectors.isJwt(trimmed)) return 'jwt';
+    if (Detectors.isSecret(trimmed)) return 'secret';
     if (Detectors.isEmail(trimmed)) return 'email';
-    if (Detectors.isIp(trimmed)) return 'ip';
+    if (Detectors.isIban(trimmed)) return 'iban';
     if (Detectors.isCard(trimmed)) return 'card';
+    if (Detectors.isSsn(trimmed)) return 'ssn';
+    if (Detectors.isIp(trimmed)) return 'ip';
     if (Detectors.isPhone(trimmed)) return 'phone';
     if (Detectors.isUrl(trimmed)) return 'url';
     if (Detectors.isAddress(trimmed)) return 'address';
@@ -70,3 +86,4 @@ export const Detectors = {
     return 'generic';
   },
 };
+
