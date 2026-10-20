@@ -31,6 +31,9 @@ Production-grade data masking for Node.js, Browsers, and TypeScript. GDPR / HIPA
     - [`Maskify.maskSensitiveFields(data, schema, options?)`](#maskifymasksensitivefieldsdata-schema-options)
     - [`Maskify.deterministic(value, options)`](#maskifydeterministicvalue-options)
     - [`Maskify.maskClass(instance)`](#maskifymaskclassinstance)
+    - [`Maskify.iban(value, options?)` & `isValidIban`](#maskifyibanvalue-options-and-isvalidibanvalue)
+    - [`Maskify.ssn(value, options?)` & `isValidSsn`](#maskifyssnvalue-options-and-isvalidssnvalue)
+    - [`Maskify.secret(value, options?)`](#maskifysecretvalue-options)
   - [Supported types](#supported-types)
   - [Masking options](#masking-options)
   - [Configuration file](#configuration-file)
@@ -153,6 +156,26 @@ const secureApiKey = m.generic({ visibleStart: 4 })
   .redact('[HIDDEN_IN_PROD]');
 ```
 
+### Available Field Maskers
+
+| Masker | Description | Example Input | Default Output |
+| :--- | :--- | :--- | :--- |
+| `m.email(opts?)` | Email address (local-part and domain) | `jane.doe@company.com` | `j*******e@c******y.com` |
+| `m.phone(opts?)` | E.164 and international phone numbers | `+1 (415) 555-0123` | `+**********0123` |
+| `m.card(opts?)` | Credit/debit cards with Luhn checksum | `4111 1111 1111 1111` | `4111 **** **** 1111` |
+| `m.iban(opts?)` | IBAN with ISO 7064 Mod 97-10 checksum | `GB82 WEST 1234 5698 7654 32` | `GB82 **** **** **** **54 32` |
+| `m.ssn(opts?)` | US Social Security Number with SSA rules | `123-45-6789` | `***-**-6789` |
+| `m.secret(opts?)` | Cloud & API keys (AWS, GitHub, Stripe, Bearer, PEM) | `AKIAIOSFODNN7EXAMPLE` | `AKIA****************` |
+| `m.ip(opts?)` | IPv4 and IPv6 addresses | `192.168.1.50` | `192.168.1.***` |
+| `m.jwt(opts?)` | JWT tokens (header, payload, signature) | `eyJhbGciOi...` | `eyJh.**********.**********` |
+| `m.url(opts?)` | URLs, sanitizing sensitive query parameters | `https://api.com?token=xyz` | `https://api.com?token=********` |
+| `m.name(opts?)` | Full names | `Jane Doe` | `J*** D**` |
+| `m.address(opts?)`| Street addresses | `123 Main St, Suite 400` | `123 *******, *********` |
+| `m.generic(opts?)`| Fallback masking with visible start/end | `sensitive-payload` | `se*************ad` |
+| `m.pattern(pat)` | Explicit template masking (`#` reveals) | `4111111111111111` | `####-****-****-####` |
+| `m.deterministic(opts)` | One-way HMAC hash pseudonymization | `jane@company.com` | `a3f12b9c8e7d4f21` |
+
+
 ### Schema Combinators & Composition (v6.1+)
 
 Maskify v6.1+ adds declarative combinators and composition helpers to `m`:
@@ -266,10 +289,16 @@ Maskify.pattern('abc123', '##*{4}');
 
 ### `Maskify.smart(freeText)`
 
-Tokenizes a free-text string, detects PII inside each token, and masks in place. Ideal for log sanitization where you don't know the structure.
+Tokenizes a free-text string, detects sensitive PII and credentials inside each token, and masks them in place while preserving surrounding text. Ideal for unstructured log sanitization, crash dumps, and chat streams. Automatically identifies:
+
+- Emails, IPv4/IPv6, JWT tokens, URLs, Credit Cards (with Luhn validation), and phone numbers
+- **IBANs** (validated against ISO 7064 Mod 97-10 check digits to eliminate false positives)
+- **US SSNs** (validated against SSA area/group/serial rules)
+- **Cloud & API Secrets** (AWS Access Keys, GitHub PATs, Stripe keys, Bearer tokens, PEM private key blocks)
 
 ```ts
-Maskify.smart('Charged card 4111-1111-1111-1111 from 10.0.0.1 at https://api.com?token=abc');
+Maskify.smart('Charged card 4111-1111-1111-1111 for user jane@example.com (SSN: 123-45-6789) on IBAN GB82 WEST 1234 5698 7654 32 using AWS key AKIAIOSFODNN7EXAMPLE');
+// → 'Charged card 4111 **** **** 1111 for user j***@e***.com (SSN: ***-**-6789) on IBAN GB82 **** **** **** **54 32 using AWS key AKIA****************'
 ```
 
 ### `Maskify.autoMask(data, options?)`
@@ -354,6 +383,57 @@ Maskify.maskClass(new User());
 // → User { id: 1, email: 'j***@c******.com', phone: '+**********0123' }
 ```
 
+### `Maskify.iban(value, options?)` and `isValidIban(value)`
+
+Validates and masks International Bank Account Numbers using the ISO 7064 Mod 97-10 algorithm. By default, reveals the country code and check digits (first 4 characters) and the account suffix (last 4 characters) while preserving original space or dash groupings.
+
+```ts
+import { Maskify, isValidIban, maskIban } from 'maskify-ts';
+
+isValidIban('GB82 WEST 1234 5698 7654 32'); // → true
+isValidIban('GB81 WEST 1234 5698 7654 32'); // → false (bad checksum)
+
+Maskify.iban('GB82 WEST 1234 5698 7654 32');
+// → 'GB82 **** **** **** **54 32'
+
+maskIban('DE89370400440532013000');
+// → 'DE89**************3000'
+```
+
+### `Maskify.ssn(value, options?)` and `isValidSsn(value)`
+
+Validates and masks US Social Security Numbers against Social Security Administration rules (area bounds, group numbers, serial numbers). Preserves delimiter formatting (`***-**-6789`).
+
+```ts
+import { Maskify, isValidSsn, maskSsn } from 'maskify-ts';
+
+isValidSsn('123-45-6789'); // → true
+isValidSsn('000-45-6789'); // → false (invalid SSA area 000)
+
+Maskify.ssn('123-45-6789'); // → '***-**-6789'
+maskSsn('123456789');       // → '*****6789'
+```
+
+### `Maskify.secret(value, options?)`
+
+Masks cloud provider secrets and API credentials while preserving recognized service prefixes (AWS `AKIA...`, GitHub `ghp_...`, Stripe `sk_...`, `Bearer ...`) so log reviewers can identify token types safely. Automatically redacts PEM private key blocks.
+
+```ts
+import { Maskify, maskSecret } from 'maskify-ts';
+
+Maskify.secret('AKIAIOSFODNN7EXAMPLE');
+// → 'AKIA****************'
+
+Maskify.secret('ghp_1234567890abcdefghijklmnopqrstuvwxyz');
+// → 'ghp_************************************'
+
+Maskify.secret('Bearer my-secret-auth-token-1234567');
+// → 'Bearer ***************************'
+
+Maskify.secret('-----BEGIN RSA PRIVATE KEY-----\nMIIEow...');
+// → '[REDACTED_PRIVATE_KEY]'
+```
+
 ---
 
 ## Supported types
@@ -395,6 +475,26 @@ interface MaskOptions {
 interface AutoMaskOptions extends MaskOptions {
   sensitiveKeys?: string[];              // extra key names to always mask
   autoDetectTypes?: MaskableType[];      // restrict which types trigger detection
+}
+
+interface IbanOptions {
+  visibleStart?: number;                 // unmasked chars at start (default: 4)
+  visibleEnd?: number;                   // unmasked chars at end (default: 4)
+  maskChar?: string;                     // default: '*'
+  preserveFormat?: boolean;              // retain original spaces/dashes (default: true)
+}
+
+interface SsnOptions {
+  visibleEnd?: number;                   // unmasked digits at end (default: 4)
+  maskChar?: string;                     // default: '*'
+  preserveFormat?: boolean;              // retain dashes/spaces (default: true)
+}
+
+interface SecretOptions {
+  visibleStart?: number;                 // unmasked chars at start (default: 0 if recognized prefix, else 4)
+  visibleEnd?: number;                   // unmasked chars at end (default: 0)
+  maskChar?: string;                     // default: '*'
+  keepPrefix?: boolean;                  // preserve service prefix e.g. AKIA, ghp_, sk_ (default: true)
 }
 ```
 
@@ -559,6 +659,19 @@ Maskify.middlewares.axiomify(app, {
 ```
 
 Installs an `onRequest` hook that wraps `res.send()` so any object/array payload is masked before serialization. Masking is **synchronous only** — Axiomify's `res.send()` writes to the socket before returning, so async custom maskers (e.g. the WebCrypto deterministic masker) aren't supported here; mask those fields in the handler before calling `res.send()`. Never blocks the response if masking fails.
+
+### Subpath Imports for Middlewares
+
+Each framework adapter is also exported from its own lightweight subpath to optimize bundle size and tree-shaking:
+
+```ts
+import { express } from 'maskify-ts/middlewares/express';
+import { fastify } from 'maskify-ts/middlewares/fastify';
+import { axiomify } from 'maskify-ts/middlewares/axiomify';
+import { prisma } from 'maskify-ts/middlewares/prisma';
+import { typeorm } from 'maskify-ts/middlewares/typeorm';
+import { mongoose } from 'maskify-ts/middlewares/mongoose';
+```
 
 ---
 
@@ -823,17 +936,18 @@ import { MaskerRegistry, Maskify } from 'maskify-ts';
 
 // Process-wide
 import { registry } from 'maskify-ts';
-registry.register('iban', (value) =>
-  value.slice(0, 4) + '*'.repeat(Math.max(0, value.length - 8)) + value.slice(-4),
+registry.register('passport', (value) =>
+  value.slice(0, 2) + '*'.repeat(Math.max(0, value.length - 4)) + value.slice(-2),
 );
 
-Maskify.mask('GB82WEST12345698765432', { type: 'iban' });
+Maskify.mask('GB12345678A', { type: 'passport' });
+// → 'GB*******8A'
 
 // Isolated (testing / request-scoped)
 const local = MaskerRegistry.create();
-local.register('ssn', (v) => '***-**-' + v.slice(-4));
-local.types();   // ['ssn']
-local.has('ssn'); // true
+local.register('driver_license', (v) => 'DL-' + '*'.repeat(v.length));
+local.types();   // ['driver_license']
+local.has('driver_license'); // true
 ```
 
 ---
@@ -913,7 +1027,7 @@ Peer dependencies are all optional — install only the frameworks you actually 
 
 ## Further reading
 
-- **Runnable examples** in [`examples/`](./examples) — basic masking, `autoMask`, `smart`, decorators, streams, and every framework adapter (Express, Fastify, Prisma, TypeORM, Mongoose, Axiomify).
+- **Runnable examples** in [`examples/`](./examples) — basic masking, `autoMask`, `smart`, decorators, streams, financial & secrets (`financial-and-secrets.ts`), and every framework adapter (Express, Fastify, Prisma, TypeORM, Mongoose, Axiomify).
 - **Guides** in [`docs/`](./docs):
   - [Security best practices](./docs/security-best-practices.md)
   - [Performance tuning](./docs/performance-tuning.md)
