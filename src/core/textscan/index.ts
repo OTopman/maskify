@@ -1,7 +1,8 @@
+import { isValidIban } from '../../maskers/iban';
+import { MaskOptions } from '../../utils';
+import { MaskifyCore } from '../maskify';
 import { Lexer } from './lexer';
 import { TokenType } from './patterns';
-import { MaskifyCore } from '../maskify';
-import { MaskOptions } from '../../utils';
 
 export class SmartMasker {
   /**
@@ -13,11 +14,16 @@ export class SmartMasker {
 
     // 1. Tokenize the input string
     const tokens = Lexer.tokenize(text);
-    
+
     // 2. Map tokens to masked strings
     return tokens.map(token => {
       // Pass-through normal text
       if (token.type === TokenType.TEXT) {
+        return token.value;
+      }
+
+      // If an IBAN pattern matched, verify ISO 7064 checksum to prevent false positives
+      if (token.type === TokenType.IBAN && !isValidIban(token.value)) {
         return token.value;
       }
 

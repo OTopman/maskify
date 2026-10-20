@@ -7,7 +7,10 @@ export type MaskableType =
   | 'generic'
   | 'ip'
   | 'jwt'
-  | 'url';
+  | 'url'
+  | 'iban'
+  | 'ssn'
+  | 'secret';
 
 export interface MaskOptions {
   /** Throw typed errors for invalid input */

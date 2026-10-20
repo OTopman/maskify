@@ -6,6 +6,18 @@
 All notable changes to this project will be documented in this file.
 
 
+## v6.2.0 - 2026-10-14
+### 🚀 New Features
+- **IBAN Masker & ISO 7064 Checksum Validator (`maskIban`, `m.iban`, `isValidIban`)**: Added support for International Bank Account Numbers with ISO 7064 Mod 97-10 check digit verification, format-preserving masking (keeping country code and last 4 account digits), and schema builder integration.
+- **US SSN Masker & SSA Validator (`maskSsn`, `m.ssn`, `isValidSsn`)**: Added US Social Security Number validation against SSA rules (area/group/serial checks) and compliance masking (`***-**-SSSS` preserving original dashes or spaces).
+- **Cloud Secrets & API Key Detection (`maskSecret`, `m.secret`)**: Added prefix-preserving masking for AWS Access Keys (`AKIA...`), GitHub Personal Access Tokens (`ghp_...`, `github_pat_...`), Stripe keys (`sk_live_...`, `pk_live_...`), Bearer tokens, and redaction for PEM private key blocks.
+- **SmartMasker Free-Text Lexer Expansion**: Free-text log scanning via `Maskify.smart()` now tokenizes and sanitizes valid IBANs, SSNs, AWS access keys, GitHub PATs, Stripe keys, Bearer tokens, and private keys alongside existing JWT, email, IP, card, and phone detectors.
+- **AutoMask Sensitive Keys & Type Detection**: Included `iban` and `ssn` in automatic value detection types and sensitive key lists in `Maskify.autoMask()`.
+
+### 🛠 Fixes & Hygiene
+- **Axiomify Subpath Export**: Added `"./middlewares/axiomify"` and `"./middlewares"` to the `exports` map in `package.json`, enabling direct imports via `import { axiomify } from 'maskify-ts/middlewares/axiomify'`.
+- **Complete PEM Block Redaction in SmartMasker**: Resolved a vulnerability where `Maskify.smart()` tokenized only the `-----BEGIN ... PRIVATE KEY-----` header, leaving the Base64 key material and `-----END ...` trailer as plain text in the output. The lexer now captures the entire PEM block through its matching END marker (or consumed body).
+
 ## v6.1.0 - 2026-10-14
 ### 🚀 New Features
 - **Async JIT Fast-Path (`m.objectAsync` and `.async()`)**: Added dynamic compilation of asynchronous flat functions via `%AsyncFunction%`. Seamlessly handles asynchronous custom maskers (e.g. WebCrypto HMACs, remote tokenization vaults) across fields and array items via concurrent `Promise.all` evaluation.
