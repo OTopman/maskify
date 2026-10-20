@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 
 ### 🛠 Fixes & Hygiene
 - **Axiomify Subpath Export**: Added `"./middlewares/axiomify"` and `"./middlewares"` to the `exports` map in `package.json`, enabling direct imports via `import { axiomify } from 'maskify-ts/middlewares/axiomify'`.
+- **Complete PEM Block Redaction in SmartMasker**: Resolved a vulnerability where `Maskify.smart()` tokenized only the `-----BEGIN ... PRIVATE KEY-----` header, leaving the Base64 key material and `-----END ...` trailer as plain text in the output. The lexer now captures the entire PEM block through its matching END marker (or consumed body).
 
 ## v6.1.0 - 2026-10-14
 ### 🚀 New Features
