@@ -109,10 +109,20 @@ describe('Smart Compiler (Maskify.smart)', () => {
     expect(result).toContain('ghp_************************************');
   });
 
-  it('should detect and redact private key blocks in stack traces', () => {
+  it('should detect and redact private key blocks in stack traces and logs', () => {
     const log = 'Key dump:\n-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0...';
     const result = Maskify.smart(log);
-    expect(result).toContain('[REDACTED_PRIVATE_KEY]');
+    expect(result).toBe('Key dump:\n[REDACTED_PRIVATE_KEY]');
+    expect(result).not.toContain('MIIEow');
+  });
+
+  it('should redact complete PEM private key blocks including END marker while preserving surrounding text', () => {
+    const log =
+      'Key dump:\n-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0...\n-----END RSA PRIVATE KEY-----\nOperation completed successfully.';
+    const result = Maskify.smart(log);
+    expect(result).toBe('Key dump:\n[REDACTED_PRIVATE_KEY]\nOperation completed successfully.');
+    expect(result).not.toContain('MIIEow');
+    expect(result).not.toContain('END RSA PRIVATE KEY');
   });
 });
 

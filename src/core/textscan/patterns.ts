@@ -26,7 +26,11 @@ export interface TokenPattern {
  */
 export const PATTERNS: TokenPattern[] = [
   { type: TokenType.JWT, regex: /\beyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\b/ },
-  { type: TokenType.SECRET, regex: /-----BEGIN[ A-Z0-9_-]+PRIVATE KEY-----/ },
+  {
+    type: TokenType.SECRET,
+    regex:
+      /-----BEGIN[ A-Z0-9_-]+PRIVATE KEY(?: BLOCK)?-----(?:[\s\S]*?-----END[ A-Z0-9_-]+PRIVATE KEY(?: BLOCK)?-----|(?:[\r\n]+(?:[A-Za-z0-9+/=]+={0,2}(?:\.{3})?|Proc-Type:[^\r\n]+|DEK-Info:[^\r\n]+)(?=[\r\n]|$))+)?/,
+  },
   { type: TokenType.SECRET, regex: /\b(?:AKIA|ASIA|AROA)[0-9A-Z]{16}\b/ },
   {
     type: TokenType.SECRET,

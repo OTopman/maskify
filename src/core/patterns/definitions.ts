@@ -49,7 +49,8 @@ export const PATTERNS = {
   SECRET_GITHUB: /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,255}\b|\bgithub_pat_[A-Za-z0-9_]{82}\b/,
   SECRET_STRIPE: /\b(?:sk|pk|rk)_(?:live|test)_[0-9a-zA-Z]{24,99}\b/,
   SECRET_BEARER: /\bBearer\s+(?!eyJ)[A-Za-z0-9\-._~+/]+=*\b/,
-  SECRET_PRIVATE_KEY: /-----BEGIN[ A-Z0-9_-]+PRIVATE KEY-----/,
+  SECRET_PRIVATE_KEY:
+    /-----BEGIN[ A-Z0-9_-]+PRIVATE KEY(?: BLOCK)?-----(?:[\s\S]*?-----END[ A-Z0-9_-]+PRIVATE KEY(?: BLOCK)?-----|(?:[\r\n]+(?:[A-Za-z0-9+/=]+={0,2}(?:\.{3})?|Proc-Type:[^\r\n]+|DEK-Info:[^\r\n]+)(?=[\r\n]|$))+)?/,
 
   // Sensitive field names — anchored to the *whole* key so "author" doesn't
   // fall into "auth" and "secretary" doesn't fall into "secret".

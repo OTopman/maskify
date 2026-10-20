@@ -38,7 +38,7 @@ function runSecretMasking(secret: string, opts: SecretOptions, _ctx: MaskContext
   const { visibleStart, visibleEnd = 0, maskChar = '*', keepPrefix = true } = opts;
   if (!secret) return '';
 
-  if (secret.startsWith('-----BEGIN') && secret.includes('PRIVATE KEY')) {
+  if (secret.trim().startsWith('-----BEGIN') && secret.includes('PRIVATE KEY')) {
     return '[REDACTED_PRIVATE_KEY]';
   }
 
